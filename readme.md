@@ -16,7 +16,7 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 > Após seu cadastro aprovado será liberado as credencias de acesso da API.
 
 ```
-Para precise de ajuda mande email para integracao@parcelow.com
+Se precisar de ajuda mande email para integracao@parcelow.com
 ```
 
 ## Exemplo de credencial
