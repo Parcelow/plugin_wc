@@ -5,9 +5,9 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.0.1
- * Requires at least: 1.0.0
- * Tested up to: 1.0.1
+ * Version: 1.0.2
+ * Requires at least: 5.9
+ * Tested up to: 5.9
  * WC requires at least: 6.1.0
  * WC tested up to: 6.1.0
  * Text Domain: woocommerce-parcelow-transparent-pay
@@ -127,14 +127,563 @@ function carrega_scripts() {
     wp_enqueue_style('bootstrap', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap.min.css');
     wp_enqueue_style('bootstrap_icones', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap-icons.min.css');
 
-    
-    wp_enqueue_script('jquery.min', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/jquery.min.js');
     wp_enqueue_script('bootstrap.bundle', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
-	wp_enqueue_script('frontend-custom', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/frontend-custom.js');
+    
+    wp_enqueue_script('scriptajax', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
+
     wp_enqueue_script('qrcode', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/qrcode.min.js');
+
+    wp_localize_script(
+        'scriptajax',
+        'script_ajax',
+        array(
+            'ajax_url' => admin_url('admin-ajax.php')
+        )
+    );
 
 }
 add_action( 'wp_enqueue_scripts', 'carrega_scripts' );
+
+//AJAX
+add_action('wp_ajax_carrega_ajax', 'carrega_ajax');
+add_action('wp_ajax_nopriv_carrega_ajax', 'carrega_ajax');
+
+function carrega_ajax()
+{
+    if(wp_strip_all_tags($_POST["acao"]) == 'FINALIZAPAGTOCARTAO'){
+        $order_id = wp_strip_all_tags($_POST["order_id"]);
+        $access_token = wp_strip_all_tags($_POST["acc"]);
+        $apihost = wp_strip_all_tags($_POST["apihost"]);
+
+        $card_name = wp_strip_all_tags($_POST["card_name"]);
+        $card_numero = wp_strip_all_tags($_POST["card_numero"]);
+        $card_cvv = wp_strip_all_tags($_POST["card_cvv"]);
+        $card_data_valid = wp_strip_all_tags($_POST["card_data_valid"]);
+        $card_data_valid = explode("/", $card_data_valid);
+        $card_parcela = wp_strip_all_tags($_POST["card_parcelas"]);
+        $card_cep = wp_strip_all_tags($_POST["card_cep"]);
+        $card_street = wp_strip_all_tags($_POST["card_street"]);
+        $card_street_number = wp_strip_all_tags($_POST["card_street_number"]);
+        $card_street_supplement = wp_strip_all_tags($_POST["card_street_supplement"]);
+        $card_street_bairro = wp_strip_all_tags($_POST["card_street_bairro"]);
+        $card_street_city = wp_strip_all_tags($_POST["card_street_city"]);
+        $card_street_state = wp_strip_all_tags($_POST["card_street_state"]);
+
+        $data = array("method" => "credit-card", "installment" => $card_parcela, "card" => array(
+            "number" => $card_numero,
+            "holder" => $card_name,
+            "exp_month" => $card_data_valid[0],
+            "exp_year" => $card_data_valid[1],
+            "cvv" => $card_cvv,
+            "brand" => "visa",
+            "address_cep" => $card_cep,
+            "address_street" => $card_street,
+            "address_number" => $card_street_number,
+            "address_complement" => $card_street_supplement,
+            "address_neighborhood" => $card_street_bairro,
+            "address_city" => $card_street_city,
+            "address_state" => $card_street_state
+        ));
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'POST',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90,
+            'body' => $data
+            
+        );
+
+        $urlapi = $apihost . "/api/order/".$order_id."/payment";
+
+        $response = wp_remote_post( $urlapi , $payload );
+        if (is_wp_error($response)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = wp_remote_retrieve_body( $response );
+        
+        $json = json_decode($json);
+        $status_code = wp_remote_retrieve_response_code($response);
+        $result = "";
+        if($status_code == 200){
+            $result = $status_code . ";".$json->message.";1";
+        }
+        if($status_code == 400){
+            $result = $status_code . ";".$json->message.";2";
+        }
+
+        $retorno = [
+            "result" => $result
+        ];
+
+        echo wp_send_json($retorno);
+        
+    } else if(wp_strip_all_tags($_POST["acao"]) == 'GERARPIX'){
+        $order_id = wp_strip_all_tags($_POST["order_id"]);
+        $access_token = wp_strip_all_tags($_POST["acc"]);
+        $apihost = wp_strip_all_tags($_POST["apihost"]);
+
+        $data = array("method" => "pix");
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'POST',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90,
+            'body' => $data
+            
+        );
+
+        $urlapi = $apihost . "/api/order/".$order_id."/payment";
+
+        $response = wp_remote_post( $urlapi , $payload );
+        if (is_wp_error($response)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = wp_remote_retrieve_body( $response );
+        
+        $json = json_decode($json);
+
+        $retorno = [
+            "link" => $json->qrcode
+        ];
+
+        echo wp_send_json($retorno);
+
+    } else if(wp_strip_all_tags($_POST["acao"]) == 'RESPONSEQUESTION'){
+        
+        $order_id = wp_strip_all_tags($_POST["order_id"]);
+        $access_token = wp_strip_all_tags($_POST["acc"]);
+        $apihost = wp_strip_all_tags($_POST["apihost"]);
+
+        $p1 = wp_strip_all_tags($_POST["p1"]);
+        $r1 = wp_strip_all_tags($_POST["r1"]);
+
+        $p2 = wp_strip_all_tags($_POST["p2"]);
+        $r2 = wp_strip_all_tags($_POST["r2"]);
+
+        $data = array('questions' => array(
+            array(
+                'id' => $p1,
+                'answer' => $r1
+            ),
+            array(
+                'id' => $p2,
+                'answer' => $r2
+            )
+        ));
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'POST',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90,
+            'body' => $data
+            
+        );
+
+        $urlapi = $apihost . "/api/order/".$order_id."/questions/answers";
+
+        $response = wp_remote_post( $urlapi , $payload );
+        if (is_wp_error($response)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = wp_remote_retrieve_body( $response );
+        
+        $json = json_decode($json);
+        $status = 0;
+        if($json->success == true){
+            $status = 1;
+        }
+
+        $retorno = [
+            "status" => $status
+        ];
+
+        echo wp_send_json($retorno);
+
+    } else if(wp_strip_all_tags($_POST["acao"]) == 'WC_PARCELOW_TOTAL'){
+        
+        $order_id = wp_strip_all_tags($_POST["order_id"]);
+        $access_token = wp_strip_all_tags($_POST["acc"]);
+        $apihost = wp_strip_all_tags($_POST["apihost"]);
+        $total = wp_strip_all_tags($_POST["total"]);
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'GET',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90
+        );
+        $urlapi = $apihost . "/api/simulate?amount=" . $total;
+
+        $response = wp_remote_get($urlapi , $payload );
+        if (is_wp_error($response)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = json_decode( wp_remote_retrieve_body( $response ) );
+        $json = $json->data->creditcard->installments;
+        $retorno = [
+            "status" => 1,
+            "json" => json_encode($json)
+        ];
+        echo wp_send_json($retorno);
+
+    } else if(wp_strip_all_tags($_POST["acao"]) == 'SHOWQUETIONS'){ //MOSTRA AS PERGUNTAS
+        
+        $order_id = wp_strip_all_tags($_POST["order_id"]);
+        $access_token = wp_strip_all_tags($_POST["acc"]);
+        $apihost = wp_strip_all_tags($_POST["apihost"]);
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'GET',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90
+        );
+        $urlapi = $apihost . "/api/order/".$order_id."/questions";
+
+        $response = wp_remote_get($urlapi , $payload );
+        if (is_wp_error($response)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = json_decode( wp_remote_retrieve_body( $response ) );
+        $html = '<h4>Confirmação dados pessoais</h4><br>';
+        $id = 0;
+        $ant = '';
+        $quest = 0;
+        foreach($json->questions as $r){
+    
+            if($r->id != $ant){
+                $html .= '<h6>' . $r->question . '</h6>';
+                $html .= '<ul class="list-group list-group-flush">';
+                $quest++;
+            }
+    
+            foreach($r->answers as $a){
+                $html .= '<label class="list-group-item">
+                <input class="form-check-input me-1 " type="radio" name="quest_'.$quest.'" value="' . $r->id .";". $a->id . '">
+                ' . $a->answer . '
+                </label>';
+            }
+    
+            if($r->id != $ant){
+                $html .= '</ul>';
+            }
+    
+            $ant = $r->id;
+        }
+        $html .= '<br><a class="btn btn-warning" id="btn_response_question">Prosseguir</a>';
+        $html .= '<div id="boxRespQuests"></div><br><br>';
+        $retorno = [
+            "status" => 1,
+            "texto" => $html
+        ];
+        echo wp_send_json($retorno);
+
+    } else if(wp_strip_all_tags($_POST["acao"]) == 'INICIAFRONTPARCELOW'){
+        global $wp;
+        $urlstual = home_url( $wp->request );
+
+        if (isset(WC()->session)) {
+            $apihost = WC()->session->get( 'WC_PARCELOW_API_HOST' );
+            $bearer = WC()->session->get( 'WC_COD_AUT_PARCELOW' );
+            $order_id_parcelow = WC()->session->get( 'WC_COD_PEDIDO_NA_PARCELOW' );
+            $order_id = WC()->session->get( 'WC_COD_PEDIDO_LOCAL' );
+            $order_key = "";
+        } else{
+            $apihost = "";
+            $bearer = "";
+            $order_id_parcelow = "";
+            $order_id = "";
+            $order_key = "";
+        }
+        
+        $order = wc_get_order( $order_id );
+        if($order){
+            
+            $data = $order->get_data();
+            $order_status = $data['status'];
+            $total = $order->get_total();
+            $total = (string) $total;
+            $order_key = $order->get_order_key();
+            
+        } else{
+            $order_status = '';
+            $total = 0;
+        }
+
+        $descrip_method = '<input type="hidden" name="PARCELOW_GATEWAY_PLUGIN_URL" id="PARCELOW_GATEWAY_PLUGIN_URL" value="'.PARCELOW_GATEWAY_PLUGIN_URL.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_URL_ATUAL" id="PARCELOW_URL_ATUAL" value="'.$urlstual.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED_LOCAL" id="PARCELOW_COD_PED_LOCAL" value="'.$order_id.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED" id="PARCELOW_COD_PED" value="'.$order_id_parcelow.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_STATUS_PED_LOCAL" id="PARCELOW_STATUS_PED_LOCAL" value="'.$order_status.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_ACC" id="PARCELOW_ACC" value="'.$bearer.'">';
+        $descrip_method .= '<input type="hidden" name="PARCELOW_API_HOST" id="PARCELOW_API_HOST" value="'.$apihost.'">';
+        $descrip_method .= '<input type="hidden" name="WC_PARCELOW_TOTAL" id="WC_PARCELOW_TOTAL" value="'.$total.'">';
+        $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_KEY" id="WC_PARCELOW_ORDER_KEY" value="'.$order_key.'">';
+
+        $descrip_method .= '<!-- Modal -->
+        <div class="modal fade" id="mod_gatway_parcelow" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="mod_gatway_parcelow" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="border-bottom: none;">
+                <h5 class="modal-title" id="mod_gatway_parcelow"><img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                <div style="width:100%;height:auto;">
+        
+                    <div id="boxMsgOrder"></div>
+        
+                    <div id="boxQuestions"></div>
+        
+                    <div id="boxMeioPagto" style="display:none">
+
+                        <div class="row">
+
+                            <div class="col-md-12 text-center">
+                                <h4>Escolha um meio de pagamento</h4><br><br>
+                            </div>
+        
+                            <div class="col-md-6 text-center">
+                                <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
+                            </div>
+        
+                            <div class="col-md-6 text-center">
+                                <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
+                            </div>
+
+                        </div>
+
+                    </div>
+        
+                    <div id="boxPix" style="display:none"></div>
+        
+                    <div id="boxCartao" style="display:none">
+        
+                        <div class="row">
+                        
+                            <div class="col-md-12">
+                                <h3>Enter the Card data</h3>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="card_name">Name printed on Card <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_name" id="card_name" value="' . get_user_meta( get_current_user_id(), 'billing_first_name', true ) .' ' . get_user_meta( get_current_user_id(), 'billing_last_name', true ) .'">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="card_numero">Card number <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_numero" id="card_numero" maxlength="16" value="">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="card_cvv">CVV <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value="">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="card_data_valid">Expiration date <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="MM/YYYY" name="card_data_valid" id="card_data_valid" value="">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="card_parcelas">Select the number of installments <span style="color:red;">*</span></lablel>
+                                    <select class="form-control" name="card_parcelas" id="card_parcelas">
+        
+                                    </select>
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <hr>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <h6>Card billing address</h6>
+                                <br>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_cep">Postcode / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_cep" id="card_cep" value="' . get_user_meta( get_current_user_id(), 'billing_postcode', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street">Street <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . get_user_meta( get_current_user_id(), 'billing_address_1', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street_number">Number <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_number" id="card_street_number" value="' . get_user_meta( get_current_user_id(), 'address_number', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street_supplement">Supplement </lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_supplement" id="card_street_supplement">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street_bairro">Neighborhood of billing address <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_bairro" id="card_street_bairro" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street_city">City <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_city" id="card_street_city" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <lablel for="card_street_state">State <span style="color:red;">*</span></lablel>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_state" id="card_street_state" value="' . get_user_meta( get_current_user_id(), 'billing_state', true ) . '">
+                                </div>
+                            </div>
+        
+                            <div class="col-md-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo">
+                                    <label class="form-check-label" for="li_termo">
+                                        <span>Li e aceito os <a href="https://parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
+                                        <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma ParcelowSandbox.</span>
+        
+                                    </label>
+                                </div>
+        
+                            </div>
+        
+                            
+        
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <a class="btn btn-warning" id="btn_finaliza_com_cartao">Finalizar pagamento</a>
+                                </div>
+                            </div>
+        
+
+        
+                        </div>
+        
+        
+                    </div>
+
+                    <br style="clear:both;">
+
+                    <div id="boxMsgFinalizaCard"></div>
+
+                    <br style="clear:both;">
+
+                </div>
+            </div>
+
+
+            </div>
+            </div>
+        </div>';
+
+        
+
+        $urlcheck = wc_get_checkout_url();
+        $uri_atual = wc_get_page_permalink(get_the_ID());
+        $uripag = wp_strip_all_tags($_POST["uripag"]);
+        $status = 0;
+
+        if(strpos($uripag, "show_parcelow")){
+            $status = 1;
+        }
+
+        //$order_id = wp_strip_all_tags($_POST["order_id"]);
+        
+        $retorno = [
+            "status" => $status,
+            "texto" => $descrip_method,
+            "uri_atual" => $uripag,
+            "urlcheck" => $urlcheck
+        ];
+        echo wp_send_json($retorno);
+    }
+
+
+}
+
 
 //wc-checkout 	
 function woocommerce_gateway_parcelow_init() {
@@ -151,239 +700,9 @@ function woocommerce_gateway_parcelow_init() {
  		 */
  		public function __construct() 
         {
-            global $wp;
-            $urlstual = home_url( $wp->request );
-
-            if (isset(WC()->session)) {
-                $apihost = WC()->session->get( 'WC_PARCELOW_API_HOST' );
-                $bearer = WC()->session->get( 'WC_COD_AUT_PARCELOW' );
-                $order_id_parcelow = WC()->session->get( 'WC_COD_PEDIDO_NA_PARCELOW' );
-                $order_id = WC()->session->get( 'WC_COD_PEDIDO_LOCAL' );
-                $order_key = "";
-            } else{
-                $apihost = "";
-                $bearer = "";
-                $order_id_parcelow = "";
-                $order_id = "";
-                $order_key = "";
-            }
-            
-            $order = wc_get_order( $order_id );
-            if($order){
-                
-                $data = $order->get_data();
-                $order_status = $data['status'];
-                $total = $order->get_total();
-                $total = (string) $total;
-                $order_key = $order->get_order_key();
-                
-            } else{
-                $order_status = '';
-                $total = 0;
-            }
-
-
-
-            $descrip_method = '<input type="hidden" name="PARCELOW_GATEWAY_PLUGIN_URL" id="PARCELOW_GATEWAY_PLUGIN_URL" value="'.PARCELOW_GATEWAY_PLUGIN_URL.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_URL_ATUAL" id="PARCELOW_URL_ATUAL" value="'.$urlstual.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED_LOCAL" id="PARCELOW_COD_PED_LOCAL" value="'.$order_id.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED" id="PARCELOW_COD_PED" value="'.$order_id_parcelow.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_STATUS_PED_LOCAL" id="PARCELOW_STATUS_PED_LOCAL" value="'.$order_status.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_ACC" id="PARCELOW_ACC" value="'.$bearer.'">';
-            $descrip_method .= '<input type="hidden" name="PARCELOW_API_HOST" id="PARCELOW_API_HOST" value="'.$apihost.'">';
-            $descrip_method .= '<input type="hidden" name="WC_PARCELOW_TOTAL" id="WC_PARCELOW_TOTAL" value="'.$total.'">';
-            $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_KEY" id="WC_PARCELOW_ORDER_KEY" value="'.$order_key.'">';
-
-            $descrip_method .= '<!-- Modal -->
-            <div class="modal fade" id="mod_gatway_parcelow" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="mod_gatway_parcelow" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header" style="border-bottom: none;">
-                    <h5 class="modal-title" id="mod_gatway_parcelow"><img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                    <div style="width:100%;height:auto;">
-            
-                        <div id="boxMsgOrder"></div>
-            
-                        <div id="boxQuestions"></div>
-            
-                        <div id="boxMeioPagto" style="display:none">
-
-                            <div class="row">
-
-                                <div class="col-md-12 text-center">
-                                    <h4>Escolha um meio de pagamento</h4><br><br>
-                                </div>
-            
-                                <div class="col-md-6 text-center">
-                                    <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
-                                </div>
-            
-                                <div class="col-md-6 text-center">
-                                    <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
-                                </div>
-
-                            </div>
-
-                        </div>
-            
-                        <div id="boxPix" style="display:none"></div>
-            
-                        <div id="boxCartao" style="display:none">
-            
-                            <div class="row">
-                            
-                                <div class="col-md-12">
-                                    <h3>Enter the Card data</h3>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="card_name">Name printed on Card <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_name" id="card_name" value="' . get_user_meta( get_current_user_id(), 'billing_first_name', true ) .' ' . get_user_meta( get_current_user_id(), 'billing_last_name', true ) .'">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="card_numero">Card number <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_numero" id="card_numero" maxlength="16" value="">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="card_cvv">CVV <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value="">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="card_data_valid">Expiration date <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="MM/YYYY" name="card_data_valid" id="card_data_valid" value="">
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="card_parcelas">Select the number of installments <span style="color:red;">*</span></lablel>
-                                        <select class="form-control" name="card_parcelas" id="card_parcelas">
-            
-                                        </select>
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <hr>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <h6>Card billing address</h6>
-                                    <br>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_cep">Postcode / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_cep" id="card_cep" value="' . get_user_meta( get_current_user_id(), 'billing_postcode', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street">Street <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . get_user_meta( get_current_user_id(), 'billing_address_1', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street_number">Number <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street_number" id="card_street_number" value="' . get_user_meta( get_current_user_id(), 'address_number', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street_supplement">Supplement </lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street_supplement" id="card_street_supplement">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street_bairro">Neighborhood of billing address <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street_bairro" id="card_street_bairro" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street_city">City <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street_city" id="card_street_city" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <lablel for="card_street_state">State <span style="color:red;">*</span></lablel>
-                                        <input type="text" class="form-control" placeholder="" name="card_street_state" id="card_street_state" value="' . get_user_meta( get_current_user_id(), 'billing_state', true ) . '">
-                                    </div>
-                                </div>
-            
-                                <div class="col-md-12">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo">
-                                        <label class="form-check-label" for="li_termo">
-                                            <span>Li e aceito os <a href="https://parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
-                                            <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma ParcelowSandbox.</span>
-            
-                                        </label>
-                                    </div>
-            
-                                </div>
-            
-                                
-            
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <a class="btn btn-warning" id="btn_finaliza_com_cartao">Finalizar pagamento</a>
-                                    </div>
-                                </div>
-            
 
             
-                            </div>
-            
-            
-                        </div>
-
-                        <br style="clear:both;">
-
-                        <div id="boxMsgFinalizaCard"></div>
-
-                        <br style="clear:both;">
-
-                    </div>
-                </div>
-
-
-                </div>
-                </div>
-            </div>';
-
             add_action( 'woocommerce_api_parcelow_callback', array( $this, 'callback_handler' ) );
-
-            $urlcheck = $this->wc_get_checkout_url();
-            $uri_atual = get_permalink();
-            if($uri_atual == $urlcheck){
-                echo $descrip_method;
-            }
-
-
 
             $this->id = 'parcelow'; // payment gateway plugin ID
             //$this->icon = PARCELOW_GATEWAY_PLUGIN_URL.'assets/imgs/gateway_parcelow_img.jpg';
@@ -395,6 +714,8 @@ function woocommerce_gateway_parcelow_init() {
             $this->supports = array(
                 'products'
             );
+
+            echo "<div id='boxHTMLModalParcelow'></div>";
 
             
             // Method with all the options fields
@@ -446,18 +767,6 @@ function woocommerce_gateway_parcelow_init() {
             } 
         }
 
-        public function wc_get_checkout_url()
-        {
-            $checkout_url = wc_get_page_permalink( 'checkout' );
-            if ( $checkout_url ) {
-              // Force SSL if needed.
-              if ( is_ssl() || 'yes' === get_option( 'woocommerce_force_ssl_checkout' ) ) {
-                $checkout_url = str_replace( 'http:', 'https:', $checkout_url );
-              }
-            }
-          
-            return apply_filters( 'woocommerce_get_checkout_url', $checkout_url );
-          }
 
         public function secured_encrypt($plaintext)
         {

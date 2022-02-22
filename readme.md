@@ -1,14 +1,16 @@
-﻿=== Parcelow ===
-Contributors: parcelow
-Tags: payment, pagamento, pagamentos, meio de pagamento, gateway de pagamento
-Requires at least: 1.0
-Tested up to: 1.1
-Stable tag: 1.1.1
-Requires PHP: 7.2
-License: GPLv3
-License URI: https://www.gnu.org/licenses/gpl-3.0.html
+﻿# LEIA ME
 
-# LEIA ME
+## Parcelow
+> Contributors: parcelow
+> Tags: payment, pagamento, pagamentos, meio de pagamento, gateway de pagamento
+> Requires at least: 5.9
+> Tested up to: 5.9
+> Stable tag: 1.0.2
+> Requires PHP: 7.2
+> License: GPLv3
+> License URI: https://www.gnu.org/licenses/gpl-3.0.html
+
+
 
 ## Instruções para usar o plugin Parcelow
 > Criar uma conta em www.parcelow.com
