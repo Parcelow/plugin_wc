@@ -15,7 +15,7 @@ $(document).ready(function($){
             type: "POST",
             dataType: "JSON",
             data: {
-                action: 'carrega_ajax',
+                action: 'wcppa_carrega_ajax',
                 acao: 'INICIAFRONTPARCELOW',
                 uripag: window.location.href
             },
@@ -31,7 +31,7 @@ $(document).ready(function($){
                             keyboard: false
                         });
                         myModal.show();
-                        getQuestions('#boxQuestions', ped_cod_parcelow, acc, apihost);
+                        wcppa_getQuestions('#boxQuestions', ped_cod_parcelow, acc, apihost);
                     }, 3000);
 
                 }
@@ -44,14 +44,14 @@ $(document).ready(function($){
 
 
 
-    function getQuestions(target, order_id, acc, apihost)
+    function wcppa_getQuestions(target, order_id, acc, apihost)
     {
         jQuery.ajax({
             url: script_ajax.ajax_url,
             type: "POST",
             dataType: "JSON",
             data: {
-                action: 'carrega_ajax',
+                action: 'wcppa_carrega_ajax',
                 acao: 'SHOWQUETIONS',
                 order_id: order_id,
                 acc: acc,
@@ -68,9 +68,9 @@ $(document).ready(function($){
                 $('#boxQuestions').html(data.texto);
 
                 //carrega parcelas
-                getParcelas('card_parcelas', order_id, acc, apihost);
+                wcppa_getParcelas('card_parcelas', order_id, acc, apihost);
 
-                iniJS();
+                wcppa_iniJS();
             },
             beforeSend: function () {
                 $(target).html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
@@ -78,14 +78,14 @@ $(document).ready(function($){
         });
     }
 
-    function getParcelas(target, order_id, acc, apihost){
+    function wcppa_getParcelas(target, order_id, acc, apihost){
         var total = $('#WC_PARCELOW_TOTAL').val();
         jQuery.ajax({
             url: script_ajax.ajax_url,
             type: "POST",
             dataType: "JSON",
             data: {
-                action: 'carrega_ajax',
+                action: 'wcppa_carrega_ajax',
                 acao: 'WC_PARCELOW_TOTAL',
                 order_id: order_id,
                 acc: acc,
@@ -122,28 +122,28 @@ $(document).ready(function($){
     }
 
 
-    function iniJS()
+    function wcppa_iniJS()
     {
         jQuery(document).ready(function($){
     
             $( "#btn_response_question" ).on( "click", function() {
-                responseQuestion('#boxRespQuests');
+                wcppa_responseQuestion('#boxRespQuests');
             });
     
             $( "#btn_show_form_card" ).on( "click", function() {
-                showFormCard('#boxCartao');
+                wcppa_showFormCard('#boxCartao');
             });
     
             $( "#btn_show_pix" ).on( "click", function() {
-                pagarComPix('#boxPix');
+                wcppa_pagarComPix('#boxPix');
             });
     
             $( "#btn_finaliza_com_cartao" ).on( "click", function() {
-                finalizaPedidoCartao('#boxMsgFinalizaCard');
+                wcppa_finalizaPedidoCartao('#boxMsgFinalizaCard');
             });
     
             
-            function responseQuestion(target)
+            function wcppa_responseQuestion(target)
             {
                 var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
@@ -161,7 +161,7 @@ $(document).ready(function($){
                     type: "POST",
                     dataType: "JSON",
                     data: {
-                        action: 'carrega_ajax',
+                        action: 'wcppa_carrega_ajax',
                         acao: 'RESPONSEQUESTION',
                         order_id: order_id,
                         acc: acc,
@@ -176,8 +176,8 @@ $(document).ready(function($){
                         console.log(data.status);
                         if(parseInt(data.status) == 1){
                             $('#boxQuestions').html('&nbsp;');
-                            //showFormCard('#boxCartao');
-                            showMeiosPagto('#boxMeioPagto');
+                            //wcppa_showFormCard('#boxCartao');
+                            wcppa_showMeiosPagto('#boxMeioPagto');
                         } else{
                             console.log('Identidade não confirmada');
                         }
@@ -188,7 +188,7 @@ $(document).ready(function($){
                 });
             }
     
-            function pagarComPix(target)
+            function wcppa_pagarComPix(target)
             {
                 var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
@@ -199,14 +199,14 @@ $(document).ready(function($){
                 var order_key = $('#WC_PARCELOW_ORDER_KEY').val();
                 
                 $(target).css('display','block');
-                hideMeiosPagto('#boxMeioPagto');
+                wcppa_hideMeiosPagto('#boxMeioPagto');
    
                 jQuery.ajax({
                     url: script_ajax.ajax_url,
                     type: "POST",
                     dataType: "JSON",
                     data: {
-                        action: 'carrega_ajax',
+                        action: 'wcppa_carrega_ajax',
                         acao: 'GERARPIX',
                         order_id: order_id,
                         acc: acc,
@@ -239,7 +239,7 @@ $(document).ready(function($){
                         //window.location.href = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
                         pageURL = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
                         display = $('#timer');
-                        startTimer(60, display, pageURL);
+                        wcppa_startTimer(60, display, pageURL);
     
                         //window.open(qrc,'new_win');
     
@@ -252,7 +252,7 @@ $(document).ready(function($){
                 });
             }
     
-            function startTimer(duration, display, pageURL)
+            function wcppa_startTimer(duration, display, pageURL)
             {
                 var timer = duration, minutes, seconds;
                 setInterval(function () {
@@ -273,7 +273,7 @@ $(document).ready(function($){
                 }, 1000);
             }
     
-            function finalizaPedidoCartao(target)
+            function wcppa_finalizaPedidoCartao(target)
             {
                 var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
@@ -301,7 +301,7 @@ $(document).ready(function($){
                     type: "POST",
                     dataType: "JSON",
                     data: {
-                        action: 'carrega_ajax',
+                        action: 'wcppa_carrega_ajax',
                         acao: 'FINALIZAPAGTOCARTAO',
                         order_id: order_id,
                         acc: acc,
@@ -352,32 +352,32 @@ $(document).ready(function($){
                 });
             }
     
-            function hideMeiosPagto(target){
+            function wcppa_hideMeiosPagto(target){
                 $(target).css('display','none');
             }
     
-            function showMeiosPagto(target){
+            function wcppa_showMeiosPagto(target){
                 $(target).css('display','block');
             }
     
-            function showFormCard(target){
+            function wcppa_showFormCard(target){
                 $(target).css('display','block');
-                hideMeiosPagto('#boxMeioPagto');
+                wcppa_hideMeiosPagto('#boxMeioPagto');
             }
     
-            function hiddMsg(target, t) {
+            function wcppa_hiddMsg(target, t) {
                 setTimeout(function () {
                     $(target).fadeOut();
                     $(target).html("&nbsp;");
                 }, t);
             }
     
-            function showMsg(target) {
+            function wcppa_showMsg(target) {
                 $(target).fadeIn();
                 $(target).html("&nbsp;");
             }
     
-            function apenasNumeros(string) {
+            function wcppa_apenasNumeros(string) {
                 var numsStr = string.replace(/[^0-9]/g, '');
                 return numsStr;
             }

@@ -16,7 +16,7 @@
  */
 
  
-function register_paid_by_customer() {
+function wcppa_register_paid_by_customer() {
     register_post_status( 'wc-by-customer', array(
             'label' => _x( 'Payment Received', 'Order Status', 'woo-parcelow' ),
             'public' => true,
@@ -30,21 +30,22 @@ function register_paid_by_customer() {
         )
     );
 }
-add_action( 'init', 'register_paid_by_customer' );
+add_action( 'init', 'wcppa_register_paid_by_customer' );
 
-function paid_by_customer_status( $order_statuses ){
+function wcppa_paid_by_customer_status( $order_statuses ){
     $order_statuses['wc-by-customer'] = _x( 'Payment Received', 'Order Status', 'woo-parcelow' );
     return $order_statuses;
 }
 
-add_filter( 'wc_order_statuses', 'paid_by_customer_status' );
+add_filter( 'wc_order_statuses', 'wcppa_paid_by_customer_status' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_filter('woocommerce_checkout_fields', 'custom_override_checkout_fields');
-function custom_override_checkout_fields($fields)
+add_filter('woocommerce_checkout_fields', 'wcppa_custom_override_checkout_fields');
+
+function wcppa_custom_override_checkout_fields($fields)
 {
     unset($fields['billing']['billing_address_2']);
     $fields['billing']['billing_company']['placeholder'] = 'Business Name';
@@ -59,9 +60,9 @@ function custom_override_checkout_fields($fields)
     return $fields;
 }
 
-add_filter('woocommerce_billing_fields', 'custom_woocommerce_billing_fields');
+add_filter('woocommerce_billing_fields', 'wcppa_custom_woocommerce_billing_fields');
 
-function custom_woocommerce_billing_fields($fields)
+function wcppa_custom_woocommerce_billing_fields($fields)
 {
 
     $fields['billing_cpf'] = array(
@@ -79,7 +80,7 @@ function custom_woocommerce_billing_fields($fields)
 /*
  * This action hook registers our PHP class as a WooCommerce payment gateway
  */
-define('PARCELOW_GATEWAY_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('WCPPA_PARCELOW_GATEWAY_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 global $wp;
 //$current_url = home_url($_SERVER['REQUEST_URI']);
@@ -89,8 +90,8 @@ global $wp;
 
 
 /** Add Valor Aproximado ao lado de cada produto */ 
-add_filter( 'woocommerce_get_price_html', 'add_approximately_price', 10, 2 );
-function add_approximately_price( $price_html, $product ) {
+add_filter( 'woocommerce_get_price_html', 'wcppa_add_approximately_price', 10, 2 );
+function wcppa_add_approximately_price( $price_html, $product ) {
     if(class_exists('WOOMULTI_CURRENCY_F_Data')){
         $settingMC= new WOOMULTI_CURRENCY_F_Data();
         $valorReais= $settingMC->get_list_currencies()[ 'BRL' ]['rate'];
@@ -104,14 +105,14 @@ function add_approximately_price( $price_html, $product ) {
     return  $price_html;
 }
 
-add_filter( 'woocommerce_payment_gateways', 'parcelow_add_gateway_class' );
+add_filter( 'woocommerce_payment_gateways', 'wcppa_parcelow_add_gateway_class' );
 
-function parcelow_add_gateway_class( $gateways ) {
-	$gateways[] = 'WC_Parcelow_Gateway'; // your class name is here
+function wcppa_parcelow_add_gateway_class( $gateways ) {
+	$gateways[] = 'WCPPA_WC_Parcelow_Gateway'; // your class name is here
 	return $gateways;
 }
  
-function showOrdersDetails( $content ) {
+function wcppa_showOrdersDetails( $content ) {
 	global $wmc_settings;
 	global $post;
 
@@ -121,17 +122,17 @@ function showOrdersDetails( $content ) {
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
-add_action( 'plugins_loaded', 'woocommerce_gateway_parcelow_init' );
+add_action( 'plugins_loaded', 'wcppa_woocommerce_gateway_parcelow_init' );
 
-function carrega_scripts() {
-    wp_enqueue_style('bootstrap', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap.min.css');
-    wp_enqueue_style('bootstrap_icones', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap-icons.min.css');
+function wcppa_carrega_scripts() {
+    wp_enqueue_style('bootstrap', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap.min.css');
+    wp_enqueue_style('bootstrap_icones', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap-icons.min.css');
 
-    wp_enqueue_script('bootstrap.bundle', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
+    wp_enqueue_script('bootstrap.bundle', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
     
-    wp_enqueue_script('scriptajax', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
+    wp_enqueue_script('scriptajax', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
 
-    wp_enqueue_script('qrcode', PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/qrcode.min.js');
+    wp_enqueue_script('qrcode', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/qrcode.min.js');
 
     wp_localize_script(
         'scriptajax',
@@ -142,32 +143,32 @@ function carrega_scripts() {
     );
 
 }
-add_action( 'wp_enqueue_scripts', 'carrega_scripts' );
+add_action( 'wp_enqueue_scripts', 'wcppa_carrega_scripts' );
 
 //AJAX
-add_action('wp_ajax_carrega_ajax', 'carrega_ajax');
-add_action('wp_ajax_nopriv_carrega_ajax', 'carrega_ajax');
+add_action('wp_ajax_wcppa_carrega_ajax', 'wcppa_carrega_ajax');
+add_action('wp_ajax_nopriv_wcppa_carrega_ajax', 'wcppa_carrega_ajax');
 
-function carrega_ajax()
+function wcppa_carrega_ajax()
 {
-    if(wp_strip_all_tags($_POST["acao"]) == 'FINALIZAPAGTOCARTAO'){
-        $order_id = wp_strip_all_tags($_POST["order_id"]);
-        $access_token = wp_strip_all_tags($_POST["acc"]);
-        $apihost = wp_strip_all_tags($_POST["apihost"]);
+    if(sanitize_text_field($_POST["acao"]) == 'FINALIZAPAGTOCARTAO'){
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
 
-        $card_name = wp_strip_all_tags($_POST["card_name"]);
-        $card_numero = wp_strip_all_tags($_POST["card_numero"]);
-        $card_cvv = wp_strip_all_tags($_POST["card_cvv"]);
-        $card_data_valid = wp_strip_all_tags($_POST["card_data_valid"]);
+        $card_name = sanitize_text_field($_POST["card_name"]);
+        $card_numero = sanitize_text_field($_POST["card_numero"]);
+        $card_cvv = sanitize_text_field($_POST["card_cvv"]);
+        $card_data_valid = sanitize_text_field($_POST["card_data_valid"]);
         $card_data_valid = explode("/", $card_data_valid);
-        $card_parcela = wp_strip_all_tags($_POST["card_parcelas"]);
-        $card_cep = wp_strip_all_tags($_POST["card_cep"]);
-        $card_street = wp_strip_all_tags($_POST["card_street"]);
-        $card_street_number = wp_strip_all_tags($_POST["card_street_number"]);
-        $card_street_supplement = wp_strip_all_tags($_POST["card_street_supplement"]);
-        $card_street_bairro = wp_strip_all_tags($_POST["card_street_bairro"]);
-        $card_street_city = wp_strip_all_tags($_POST["card_street_city"]);
-        $card_street_state = wp_strip_all_tags($_POST["card_street_state"]);
+        $card_parcela = sanitize_text_field($_POST["card_parcelas"]);
+        $card_cep = sanitize_text_field($_POST["card_cep"]);
+        $card_street = sanitize_text_field($_POST["card_street"]);
+        $card_street_number = sanitize_text_field($_POST["card_street_number"]);
+        $card_street_supplement = sanitize_text_field($_POST["card_street_supplement"]);
+        $card_street_bairro = sanitize_text_field($_POST["card_street_bairro"]);
+        $card_street_city = sanitize_text_field($_POST["card_street_city"]);
+        $card_street_state = sanitize_text_field($_POST["card_street_state"]);
 
         $data = array("method" => "credit-card", "installment" => $card_parcela, "card" => array(
             "number" => $card_numero,
@@ -229,10 +230,10 @@ function carrega_ajax()
 
         echo wp_send_json($retorno);
         
-    } else if(wp_strip_all_tags($_POST["acao"]) == 'GERARPIX'){
-        $order_id = wp_strip_all_tags($_POST["order_id"]);
-        $access_token = wp_strip_all_tags($_POST["acc"]);
-        $apihost = wp_strip_all_tags($_POST["apihost"]);
+    } else if(sanitize_text_field($_POST["acao"]) == 'GERARPIX'){
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
 
         $data = array("method" => "pix");
 
@@ -272,17 +273,17 @@ function carrega_ajax()
 
         echo wp_send_json($retorno);
 
-    } else if(wp_strip_all_tags($_POST["acao"]) == 'RESPONSEQUESTION'){
+    } else if(sanitize_text_field($_POST["acao"]) == 'RESPONSEQUESTION'){
         
-        $order_id = wp_strip_all_tags($_POST["order_id"]);
-        $access_token = wp_strip_all_tags($_POST["acc"]);
-        $apihost = wp_strip_all_tags($_POST["apihost"]);
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
 
-        $p1 = wp_strip_all_tags($_POST["p1"]);
-        $r1 = wp_strip_all_tags($_POST["r1"]);
+        $p1 = sanitize_text_field($_POST["p1"]);
+        $r1 = sanitize_text_field($_POST["r1"]);
 
-        $p2 = wp_strip_all_tags($_POST["p2"]);
-        $r2 = wp_strip_all_tags($_POST["r2"]);
+        $p2 = sanitize_text_field($_POST["p2"]);
+        $r2 = sanitize_text_field($_POST["r2"]);
 
         $data = array('questions' => array(
             array(
@@ -335,12 +336,12 @@ function carrega_ajax()
 
         echo wp_send_json($retorno);
 
-    } else if(wp_strip_all_tags($_POST["acao"]) == 'WC_PARCELOW_TOTAL'){
+    } else if(sanitize_text_field($_POST["acao"]) == 'WC_PARCELOW_TOTAL'){
         
-        $order_id = wp_strip_all_tags($_POST["order_id"]);
-        $access_token = wp_strip_all_tags($_POST["acc"]);
-        $apihost = wp_strip_all_tags($_POST["apihost"]);
-        $total = wp_strip_all_tags($_POST["total"]);
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
+        $total = sanitize_text_field($_POST["total"]);
 
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
@@ -373,11 +374,11 @@ function carrega_ajax()
         ];
         echo wp_send_json($retorno);
 
-    } else if(wp_strip_all_tags($_POST["acao"]) == 'SHOWQUETIONS'){ //MOSTRA AS PERGUNTAS
+    } else if(sanitize_text_field($_POST["acao"]) == 'SHOWQUETIONS'){ //MOSTRA AS PERGUNTAS
         
-        $order_id = wp_strip_all_tags($_POST["order_id"]);
-        $access_token = wp_strip_all_tags($_POST["acc"]);
-        $apihost = wp_strip_all_tags($_POST["apihost"]);
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
 
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
@@ -436,15 +437,15 @@ function carrega_ajax()
         ];
         echo wp_send_json($retorno);
 
-    } else if(wp_strip_all_tags($_POST["acao"]) == 'INICIAFRONTPARCELOW'){
+    } else if(sanitize_text_field($_POST["acao"]) == 'INICIAFRONTPARCELOW'){
         global $wp;
         $urlstual = home_url( $wp->request );
 
         if (isset(WC()->session)) {
-            $apihost = WC()->session->get( 'WC_PARCELOW_API_HOST' );
-            $bearer = WC()->session->get( 'WC_COD_AUT_PARCELOW' );
-            $order_id_parcelow = WC()->session->get( 'WC_COD_PEDIDO_NA_PARCELOW' );
-            $order_id = WC()->session->get( 'WC_COD_PEDIDO_LOCAL' );
+            $apihost = sanitize_text_field(WC()->session->get( 'WC_PARCELOW_API_HOST' ));
+            $bearer = sanitize_text_field(WC()->session->get( 'WC_COD_AUT_PARCELOW' ));
+            $order_id_parcelow = sanitize_text_field(WC()->session->get( 'WC_COD_PEDIDO_NA_PARCELOW' ));
+            $order_id = sanitize_text_field(WC()->session->get( 'WC_COD_PEDIDO_LOCAL' ));
             $order_key = "";
         } else{
             $apihost = "";
@@ -468,7 +469,7 @@ function carrega_ajax()
             $total = 0;
         }
 
-        $descrip_method = '<input type="hidden" name="PARCELOW_GATEWAY_PLUGIN_URL" id="PARCELOW_GATEWAY_PLUGIN_URL" value="'.PARCELOW_GATEWAY_PLUGIN_URL.'">';
+        $descrip_method = '<input type="hidden" name="WCPPA_PARCELOW_GATEWAY_PLUGIN_URL" id="WCPPA_PARCELOW_GATEWAY_PLUGIN_URL" value="'.WCPPA_PARCELOW_GATEWAY_PLUGIN_URL.'">';
         $descrip_method .= '<input type="hidden" name="PARCELOW_URL_ATUAL" id="PARCELOW_URL_ATUAL" value="'.$urlstual.'">';
         $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED_LOCAL" id="PARCELOW_COD_PED_LOCAL" value="'.$order_id.'">';
         $descrip_method .= '<input type="hidden" name="PARCELOW_COD_PED" id="PARCELOW_COD_PED" value="'.$order_id_parcelow.'">';
@@ -483,7 +484,7 @@ function carrega_ajax()
             <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header" style="border-bottom: none;">
-                <h5 class="modal-title" id="mod_gatway_parcelow"><img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
+                <h5 class="modal-title" id="mod_gatway_parcelow"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -502,11 +503,11 @@ function carrega_ajax()
                             </div>
         
                             <div class="col-md-6 text-center">
-                                <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
+                                <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
                             </div>
         
                             <div class="col-md-6 text-center">
-                                <img src="' . PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
+                                <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
                             </div>
 
                         </div>
@@ -623,7 +624,7 @@ function carrega_ajax()
                                     <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo">
                                     <label class="form-check-label" for="li_termo">
                                         <span>Li e aceito os <a href="https://parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
-                                        <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma ParcelowSandbox.</span>
+                                        <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma Parcelow.</span>
         
                                     </label>
                                 </div>
@@ -663,14 +664,12 @@ function carrega_ajax()
 
         $urlcheck = wc_get_checkout_url();
         $uri_atual = wc_get_page_permalink(get_the_ID());
-        $uripag = wp_strip_all_tags($_POST["uripag"]);
+        $uripag = sanitize_text_field($_POST["uripag"]);
         $status = 0;
 
         if(strpos($uripag, "show_parcelow")){
             $status = 1;
         }
-
-        //$order_id = wp_strip_all_tags($_POST["order_id"]);
         
         $retorno = [
             "status" => $status,
@@ -686,14 +685,14 @@ function carrega_ajax()
 
 
 //wc-checkout 	
-function woocommerce_gateway_parcelow_init() {
+function wcppa_woocommerce_gateway_parcelow_init() {
 
     if ( ! class_exists( 'WooCommerce' ) ) {
 	//	add_action( 'admin_notices', 'woocommerce_stripe_missing_wc_notice' );
 		return;
 	}
 	
-	class WC_Parcelow_Gateway extends WC_Payment_Gateway {
+	class WCPPA_WC_Parcelow_Gateway extends WC_Payment_Gateway {
 		
  		/**
  		 * Class constructor, more about it in Step 3
@@ -702,10 +701,10 @@ function woocommerce_gateway_parcelow_init() {
         {
 
             
-            add_action( 'woocommerce_api_parcelow_callback', array( $this, 'callback_handler' ) );
+            add_action( 'woocommerce_api_parcelow_callback', array( $this, 'wcppa_callback_handler' ) );
 
             $this->id = 'parcelow'; // payment gateway plugin ID
-            //$this->icon = PARCELOW_GATEWAY_PLUGIN_URL.'assets/imgs/gateway_parcelow_img.jpg';
+            //$this->icon = WCPPA_PARCELOW_GATEWAY_PLUGIN_URL.'assets/imgs/gateway_parcelow_img.jpg';
             $this->title = $this->get_option('metodo_pagto_parcelow');
             $this->has_fields = false; // in case you need a custom credit card form
             $this->method_title = 'Parcelow Transparent Gateway';
@@ -754,7 +753,7 @@ function woocommerce_gateway_parcelow_init() {
                 // we have not defined 'process_admin_options' in this class so the method in the parent
                 // class will be used instead
                 add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-				add_action( 'woocommerce_webhook_process_delivery', 'my_custom_wc_webhook_process_delivery', 10, 2 );
+				add_action( 'woocommerce_webhook_process_delivery', 'wcppa_my_custom_wc_webhook_process_delivery', 10, 2 );
 				/*https://woocommerce.wordpress.com/2017/12/08/wc-3-3-new-webhooks-crud/ */
 			}
 
@@ -768,49 +767,19 @@ function woocommerce_gateway_parcelow_init() {
         }
 
 
-        public function secured_encrypt($plaintext)
+        public function wcppa_secured_encrypt($plaintext)
         {
             $password = "e4X412AfCJv247";
             return base64_encode(openssl_encrypt($plaintext,"AES-128-ECB",$password));
         }
-    
-        public static function get_order( $order_id = false ) {
-            $order_id = self::get_order_id( $order_id );
-        
-            if ( ! $order_id ) {
-              return false;
-            }
-        
-            $order_type      = WC_Data_Store::load( 'order' )->get_order_type( $order_id );
-            $order_type_data = wc_get_order_type( $order_type );
-            if ( $order_type_data ) {
-              $classname = $order_type_data['class_name'];
-            } else {
-              $classname = false;
-            }
-        
-            // Filter classname so that the class can be overridden if extended.
-            $classname = apply_filters( 'woocommerce_order_class', $classname, $order_type, $order_id );
-        
-            if ( ! class_exists( $classname ) ) {
-              return false;
-            }
-        
-            try {
-              return new $classname( $order_id );
-            } catch ( Exception $e ) {
-              wc_caught_exception( $e, __FUNCTION__, array( $order_id ) );
-              return false;
-            }
-        }
 
-		function installmentPaymentsSimulator($idOrder) {
+		function wcppa_installmentPaymentsSimulator($idOrder) {
             $order = wc_get_order();
 
             print_r('testado');
 		}
 
-		function my_custom_wc_webhook_process_delivery( $webhook, $arg ) {
+		function wcppa_my_custom_wc_webhook_process_delivery( $webhook, $arg ) {
 				print_r($arg);
 		}
 
@@ -957,22 +926,23 @@ function woocommerce_gateway_parcelow_init() {
 			//$order->update_status('on-hold', __( 'Awaiting  payment', 'woocommerce' ));
 
             /* Array with parameters for API interaction */
+            $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
             $args = array(
                 'redirect[success]' => $this->get_return_url( $order ), 
                 'redirect[failed]'  => home_url( $wp->request ) . '/carrinho', 
-                'client[email]' => $_POST['billing_email'],
-                'client[name]'  => $_POST['billing_first_name'].' '.$_POST['billing_last_name'],
-                'client[cep]'   => $_POST['billing_postcode'],
-                'client[phone]' => $_POST['billing_phone'],
-				'client[address_street]' => $_POST['billing_address_1'],
-				'client[address_complement]' => (!isset($_POST['billing_address_2']) ? '' : $_POST['billing_address_2']),
-				'client[address_number]' => (!isset($_POST['billing_number']) ? '' : $_POST['billing_number']),
-				'client[address_neighborhood]' => $_POST['billing_city'],
-				'client[address_city]' => $_POST['billing_city'],
-				'client[address_state]' => $_POST['billing_state'],
-                'client[cpf]' => $_POST['billing_cpf'],
-				'shipping[amount]' => $order->get_total_shipping()*100,
-				'reference' => $this->geraCODRandNumber(6) . "_" . $order_id
+                'client[email]' => sanitize_email($_POST['billing_email']),
+                'client[name]'  => sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']),
+                'client[cep]'   => sanitize_text_field($_POST['billing_postcode']),
+                'client[phone]' => sanitize_text_field($_POST['billing_phone']),
+				'client[address_street]' => sanitize_text_field($_POST['billing_address_1']),
+				'client[address_complement]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+				'client[address_number]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+				'client[address_neighborhood]' => sanitize_text_field($_POST['billing_city']),
+				'client[address_city]' => sanitize_text_field($_POST['billing_city']),
+				'client[address_state]' => sanitize_text_field($_POST['billing_state']),
+                'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
+				'shipping[amount]' => $order->get_total_shipping() * 100,
+				'reference' => $this->wcppa_geraCODRandNumber(6) . "_" . $order_id
             );
 
 			$i=0; 
@@ -1022,7 +992,7 @@ function woocommerce_gateway_parcelow_init() {
             
             //print_r($args);
 
-            $existOrder = $this->checkExistOrderNaParcelow($order_id, $token);
+            $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token);
 
             if($existOrder == false)
             {
@@ -1059,17 +1029,12 @@ function woocommerce_gateway_parcelow_init() {
                     $total = (string) number_format($body['total'],2,",",".");
                     $total = str_replace(",","",$total);
                     $total = str_replace(".","",$total);
-                    $bearer = $this->secured_encrypt("Bearer ". $token);
-                    $host = $this->secured_encrypt($this->host);
+                    $bearer = $this->wcppa_secured_encrypt("Bearer ". $token);
+                    $host = $this->wcppa_secured_encrypt($this->host);
                     WC()->session->set('WC_COD_PEDIDO_NA_PARCELOW', $data['order_id']);
                     WC()->session->set('WC_COD_PEDIDO_LOCAL', $order_id);
                     WC()->session->set('WC_COD_AUT_PARCELOW', $bearer);
                     WC()->session->set('WC_PARCELOW_API_HOST', $host);
-
-
-                    
-                    
-                    
 
                     //echo $data['order_id'];
                     // $data['order_id'];
@@ -1098,12 +1063,12 @@ function woocommerce_gateway_parcelow_init() {
 
 	 	}
 
-        public function geraCODRandNumber($n)
+        public function wcppa_geraCODRandNumber($n)
         {
             return "WC".strtoupper( substr(uniqid(mt_rand()), 0, $n) );
         }
 
-        public function checkExistOrderNaParcelow($order_id, $token)
+        public function wcppa_checkExistOrderNaParcelow($order_id, $token)
         {
             $payload = array(
                 'method' => 'GET',
@@ -1149,7 +1114,7 @@ function woocommerce_gateway_parcelow_init() {
 		/*
 		 * In case you need a webhook, like PayPal IPN etc
 		 */
-		public function callback_handler() {
+		public function wcppa_callback_handler() {
 		    
             function remove_change_comment($id, $comment) {
                 if( strpos($comment->comment_content, 'Status do pedido alterado de') !== false ) {
