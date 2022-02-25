@@ -701,7 +701,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
         {
 
             
-            add_action( 'woocommerce_api_parcelow_callback', array( $this, 'wcppa_callback_handler' ) );
+            
 
             $this->id = 'parcelow'; // payment gateway plugin ID
             //$this->icon = WCPPA_PARCELOW_GATEWAY_PLUGIN_URL.'assets/imgs/gateway_parcelow_img.jpg';
@@ -716,6 +716,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
             echo "<div id='boxHTMLModalParcelow'></div>";
 
+            
+            add_action( 'woocommerce_api_parcelow_callback', array( $this, 'callback_handler' ) );
             
             // Method with all the options fields
             $this->init_form_fields();
@@ -852,7 +854,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     'title'       => 'WebHook',
                     'type'        => 'textarea',
                     'description' => 'Link que receberá o status dos pedidos da API',
-                    'default'     => home_url( $wp->request ).'/wc-api/parcelow_callback',
+                    'default'     => home_url( $wp->request ).'/wc-api/callback_handler',
                 ),
             );
          }
@@ -1114,7 +1116,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 		/*
 		 * In case you need a webhook, like PayPal IPN etc
 		 */
-		public function wcppa_callback_handler() {
+		public function callback_handler() {
 		    
             function remove_change_comment($id, $comment) {
                 if( strpos($comment->comment_content, 'Status do pedido alterado de') !== false ) {
@@ -1124,10 +1126,13 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
 			$raw_post= file_get_contents("php://input");
 			
-			print_r($raw_post); 
-			$decoded= json_decode( $raw_post );
-			$order = wc_get_order( $decoded->order->reference );
-		
+			//print_r($raw_post); 
+			$decoded = json_decode( $raw_post );
+            //WC100686_129
+            $num_pedido = explode("_", $decoded->order->reference);
+            $num_pedido = (int) trim($num_pedido[1]);
+			$order = wc_get_order( $num_pedido );
+			
 			
 		 	if ($decoded->order->status == 1){ //confirmed
 				$order->update_status( 'wc-on-hold');
@@ -1143,12 +1148,12 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 			}
 			
 			if ($decoded->order->status == 3 ){ //cancelled
-				$order->update_status('wc-cancelled', sprintf( __( 'A Ordem foi cancelada', 'woo-parcelow' ) ) );
+				$order->update_status('wc-cancelled', sprintf( __( 'A Ordem foi cancelada', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 			
 			if ($decoded->order->status == 4){ // Declined 
-				$order->update_status('wc-failed', sprintf( __( 'Tentativa de pagamento não autorizado.', 'woo-parcelow' ) ) );
+				$order->update_status('wc-failed', sprintf( __( 'Tentativa de pagamento não autorizado.', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
