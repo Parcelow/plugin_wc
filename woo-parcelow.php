@@ -684,6 +684,8 @@ function wcppa_carrega_ajax()
 }
 
 
+
+
 //wc-checkout 	
 function wcppa_woocommerce_gateway_parcelow_init() {
 
@@ -714,10 +716,10 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 'products'
             );
 
-            echo "<div id='boxHTMLModalParcelow'></div>";
-
-            
-            add_action( 'woocommerce_api_parcelow_callback', array( $this, 'callback_handler' ) );
+            /*
+            WEBHOOK
+            */
+            add_action( 'woocommerce_api_parcelow_webhook', array( $this, 'webhook'));
             
             // Method with all the options fields
             $this->init_form_fields();
@@ -766,6 +768,14 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 //$settingMC->getcookie( 'wmc_currency_rate' );
                 $this->enableMultiCurrency=  $settingMC->get_enable();              
             } 
+
+            $this->writehtml();
+
+        }
+
+        public function writehtml()
+        {
+            echo "<div id='boxHTMLModalParcelow'></div>";
         }
 
 
@@ -854,7 +864,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     'title'       => 'WebHook',
                     'type'        => 'textarea',
                     'description' => 'Link que receberá o status dos pedidos da API',
-                    'default'     => home_url( $wp->request ).'/wc-api/callback_handler',
+                    'default'     => home_url( $wp->request ).'/wc-api/parcelow_webhook',
                 ),
             );
          }
@@ -1116,18 +1126,26 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 		/*
 		 * In case you need a webhook, like PayPal IPN etc
 		 */
-		public function callback_handler() {
-		    
+		public function webhook() {
+
             function remove_change_comment($id, $comment) {
                 if( strpos($comment->comment_content, 'Status do pedido alterado de') !== false ) {
                     wp_delete_comment( $id );
                 }
             }
 
-			$raw_post= file_get_contents("php://input");
+			$raw_post = file_get_contents("php://input");
 			
 			//print_r($raw_post); 
+            
+            //error_log($raw_post, 3, "my-errors.txt");
+            /*$arquivo = "my-errors.txt";
+            $fp = fopen($arquivo, "a+");
+            fwrite($fp, $raw_post);
+            fclose($fp);*/
+
 			$decoded = json_decode( $raw_post );
+            
             //WC100686_129
             $num_pedido = explode("_", $decoded->order->reference);
             $num_pedido = (int) trim($num_pedido[1]);
