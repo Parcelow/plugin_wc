@@ -935,7 +935,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 			 
             // we need it to get any order detailes
             $order = wc_get_order( $order_id );
-			//$order->update_status('on-hold', __( 'Awaiting  payment', 'woocommerce' ));
+            $order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
 
             /* Array with parameters for API interaction */
             $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
@@ -1037,6 +1037,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 if ( $body['success'] == true ) {
                     
                     $order->update_status('wc-pending', __( 'Awaiting  payment', 'woocommerce' ));
+
                     $data = $body['data'];
                     $total = (string) number_format($body['total'],2,",",".");
                     $total = str_replace(",","",$total);
@@ -1138,11 +1139,13 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 			
 			//print_r($raw_post); 
             
-            //error_log($raw_post, 3, "my-errors.txt");
-            /*$arquivo = "my-errors.txt";
+            /*
+            error_log($raw_post, 3, $_SERVER["DOCUMENT_ROOT"] . "/log/api.txt");
+            $arquivo = $_SERVER["DOCUMENT_ROOT"] . "/log/api.log";
             $fp = fopen($arquivo, "a+");
             fwrite($fp, $raw_post);
-            fclose($fp);*/
+            fclose($fp);
+            */
 
 			$decoded = json_decode( $raw_post );
             
@@ -1151,31 +1154,103 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             $num_pedido = (int) trim($num_pedido[1]);
 			$order = wc_get_order( $num_pedido );
 			
-			
+            /*
+            Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
+            */
+            if ($decoded->order->status == 0){ //open
+                $order->set_status('aberto');
+                $order->add_order_note('Order criado', true );
+                add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
+                $order->save();
+                return;
+			}  
+            
+            /*
+            Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
+            */
 		 	if ($decoded->order->status == 1){ //confirmed
-				$order->update_status( 'wc-on-hold');
+				$order->update_status( 'wc-on-hold' );
 				return;
 			}
-		 	
+
+            /*
+            Quando o usuário realiza o pagamento, e ele é capturado pela Cielo.
+            Ou quando o ADMIN, assincronamente, marca a order como pago.
+            */
 			if ($decoded->order->status == 2 ){ //Order paid
-                $order->set_status('by-customer');
-                $order->add_order_note('Payment Received', true );
+                $order->set_status('pagamento-recebid');
+                $order->add_order_note('Pagamento recebido', true );
                 add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
                 $order->save();
                 return;
 			}
+
+            /*
+            Quando a order é cancelada pela Parcelow, ou pelo Partner.
+            */
 			
 			if ($decoded->order->status == 3 ){ //cancelled
 				$order->update_status('wc-cancelled', sprintf( __( 'A Ordem foi cancelada', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
-			
+            
+            /*
+            Quando a order é marcada como DECLINED pela Parcelow.
+            Ou quando a Cielo retorna código não reversível (sem possibilidade de nova tentativa).
+            */
 			if ($decoded->order->status == 4){ // Declined 
-				$order->update_status('wc-failed', sprintf( __( 'Tentativa de pagamento não autorizado.', 'woocommerce-gateway-parcelow' ) ) );
+				$order->update_status('wc-failed', sprintf( __( 'Pagamento falhou', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
-			$order->add_order_note('On Hold', true );
+            /*
+            Quando a order é feita por TED ou PIX, fica nesse status até que a Parcelow analise e marque como pago.
+            */
+            if ($decoded->order->status == 5){
+				$order->update_status( 'waiting-receipt' );
+                $order->add_order_note('Aguardando Recibo', true );
+				return;
+			}
+
+            /*
+            Quando a order possui valor maior que USD $ 3,000.00, após a confirmação de pagamento, entra nesse status 
+            até que a Parcelow confirme documentos pessoais enviados pelo comprador.
+            */
+            if ($decoded->order->status == 6){
+				$order->update_status( 'waiting-docs' );
+                $order->add_order_note('Aguardando Documentos', true );
+				return;
+			}
+
+            /*
+            Quando a order possui suspeita de fraude no cartão de crédito, devido ao nome do titular do cartão ser 
+            diferente do nome do comprador, até que  a Parcelow decida marcar como PAID ou DECLINED.
+            */
+            if ($decoded->order->status == 7){
+                $order->update_status('in-review', sprintf( __( 'Em Revisão', 'woocommerce-gateway-parcelow' ) ) );
+				return;
+			}
+
+            /*
+            Quando a Konduto (antifraude) marca a order como REVIEW, até que a Parcelow decida marcar como PAID ou DECLINED.
+            */
+            if ($decoded->order->status == 8){
+                $order->set_status('in-antifraund-rev');
+                $order->add_order_note('Revisão Antifraude', true );
+                add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
+                $order->save();
+                return;
+			}
+
+            /*
+            Quando a Cielo não autoriza o pagamento, fica nesse status Aguardando Pagamento, até que o comprador faça uma nova tentativa de pagamento.
+            */
+            if ($decoded->order->status == 9){
+                $order->update_status('waiting-payment', sprintf( __( 'Aguardando pagamento.', 'woocommerce-gateway-parcelow' ) ) );
+				return;
+			}
+
+			$order->add_order_note('Aberto', true );
 			return; 
 	 	}
  	}
