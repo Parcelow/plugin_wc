@@ -935,7 +935,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 			 
             // we need it to get any order detailes
             $order = wc_get_order( $order_id );
-            $order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
+            //$order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
 
             /* Array with parameters for API interaction */
             $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
@@ -1157,19 +1157,19 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             /*
             Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
             */
-            if ($decoded->order->status == 0){ //open
+            /*if ($decoded->order->status == 0){ //open
                 $order->set_status('aberto');
                 $order->add_order_note('Order criado', true );
                 add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
                 $order->save();
                 return;
-			}  
+			}  */
             
             /*
             Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
             */
-		 	if ($decoded->order->status == 1){ //confirmed
-				$order->update_status( 'wc-on-hold' );
+            if ($decoded->order->status == 1){ //confirmed
+				$order->update_status( 'wc-on-hold');
 				return;
 			}
 
@@ -1178,8 +1178,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Ou quando o ADMIN, assincronamente, marca a order como pago.
             */
 			if ($decoded->order->status == 2 ){ //Order paid
-                $order->set_status('pagamento-recebid');
-                $order->add_order_note('Pagamento recebido', true );
+                $order->set_status('by-customer');
+                $order->add_order_note('Payment Received', true );
                 add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
                 $order->save();
                 return;
@@ -1250,7 +1250,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 				return;
 			}
 
-			$order->add_order_note('Aberto', true );
+			$order->add_order_note('On Hold', true );
 			return; 
 	 	}
  	}
