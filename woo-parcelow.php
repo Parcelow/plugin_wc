@@ -1178,8 +1178,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Ou quando o ADMIN, assincronamente, marca a order como pago.
             */
 			if ($decoded->order->status == 2 ){ //Order paid
-                $order->set_status('by-customer');
-                $order->add_order_note('Payment Received', true );
+                $order->set_status('pagamento-recebid');
+                $order->add_order_note('Pagamento recebido', true );
                 add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
                 $order->save();
                 return;
