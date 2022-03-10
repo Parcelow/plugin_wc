@@ -1,19 +1,162 @@
 <?php
 /**
- * Plugin Name: Parcelow Transparent Payment Gateway 
- * Plugin URI: https://wordpress.org/plugins/woocommerce-parcelow-transparent-pay/
+ * Plugin Name: Parcelow
+ * Plugin URI: https://wordpress.org/plugins/parcelow/
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.0.2
- * Requires at least: 5.9
- * Tested up to: 5.9
+ * Version: 1.0.3
+ * Requires at least: 5.9.1
+ * Tested up to: 5.9.1
  * WC requires at least: 6.1.0
  * WC tested up to: 6.1.0
- * Text Domain: woocommerce-parcelow-transparent-pay
+ * Text Domain: parcelow
  * Domain Path: /languages
  *
  */
+
+/*
+Parcelow is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+any later version.
+Parcelow is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with Parcelow. If not, see https://www.gnu.org/licenses/gpl-2.0.html.
+*/
+
+ /////////////////////////////////////////////////////////////////////////////////////////////////
+//CUSTOM STATUS
+// Register New Order Statuses
+
+/////////////////////////////////////////////////////////////////
+// 0 - Open
+function wcppa_register_post_statuses() {
+    register_post_status( 'wc-open', array(
+        'label'                     => _x( 'Open', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'Open (%s)', 'Open (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses' );
+
+// Add New Order Statuses to WooCommerce
+function wcppa_add_order_statuses( $order_statuses ) {
+    $order_statuses['wc-open'] = _x( 'Open', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses' );
+
+/////////////////////////////////////////////////////////////////
+// 5 - Awaiting Receipt
+function wcppa_register_post_statuses_5() {
+    register_post_status( 'wc-waiting-receipt', array(
+        'label'                     => _x( 'Awaiting Receipt', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'Awaiting Receipt (%s)', 'Awaiting Receipt (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_5' );
+
+function wcppa_add_order_statuses_5( $order_statuses ) {
+    $order_statuses['wc-waiting-receipt'] = _x( 'Awaiting Receipt', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_5' );
+
+/////////////////////////////////////////////////////////////////
+// 6 - waiting-docs
+function wcppa_register_post_statuses_6() {
+    register_post_status( 'wc-waiting-docs', array(
+        'label'                     => _x( 'Awaiting Docs', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'Awaiting Docs (%s)', 'Awaiting Docs (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_6' );
+
+function wcppa_add_order_statuses_6( $order_statuses ) {
+    $order_statuses['wc-waiting-docs'] = _x( 'Awaiting Docs', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_6' );
+
+/////////////////////////////////////////////////////////////////
+// 7 - in-review
+function wcppa_register_post_statuses_7() {
+    register_post_status( 'wc-in-review', array(
+        'label'                     => _x( 'In Review', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'In Review (%s)', 'In Review (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_7' );
+
+function wcppa_add_order_statuses_7( $order_statuses ) {
+    $order_statuses['wc-in-review'] = _x( 'In Review', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_7' );
+
+/////////////////////////////////////////////////////////////////
+// 8 - wc-in-antifraund
+function wcppa_register_post_statuses_8() {
+    register_post_status( 'wc-in-antifraund', array(
+        'label'                     => _x( 'In Antifraund', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'In Antifraund (%s)', 'In Antifraund (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_8' );
+
+function wcppa_add_order_statuses_8( $order_statuses ) {
+    $order_statuses['wc-in-antifraund'] = _x( 'In Antifraund', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_8' );
+
+/////////////////////////////////////////////////////////////////
+// 9 - wc-waiting-payment
+function wcppa_register_post_statuses_9() {
+    register_post_status( 'wc-waiting-payment', array(
+        'label'                     => _x( 'Awaiting Payment', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'Awaiting Payment (%s)', 'Awaiting Payment (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_9' );
+
+function wcppa_add_order_statuses_9( $order_statuses ) {
+    $order_statuses['wc-waiting-payment'] = _x( 'Awaiting Payment', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_9' );
+
+
+
+//CUSTOM STATUS
+ /////////////////////////////////////////////////////////////////////////////////////////////////
 
  
 function wcppa_register_paid_by_customer() {
@@ -124,15 +267,16 @@ function wcppa_showOrdersDetails( $content ) {
  */
 add_action( 'plugins_loaded', 'wcppa_woocommerce_gateway_parcelow_init' );
 
-function wcppa_carrega_scripts() {
+function wcppa_carrega_scripts()
+{
+
     wp_enqueue_style('bootstrap', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap.min.css');
+
     wp_enqueue_style('bootstrap_icones', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap-icons.min.css');
 
     wp_enqueue_script('bootstrap.bundle', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
     
     wp_enqueue_script('scriptajax', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
-
-    wp_enqueue_script('qrcode', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/qrcode.min.js');
 
     wp_localize_script(
         'scriptajax',
@@ -1178,8 +1322,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Ou quando o ADMIN, assincronamente, marca a order como pago.
             */
 			if ($decoded->order->status == 2 ){ //Order paid
-                $order->set_status('pagamento-recebid');
-                $order->add_order_note('Pagamento recebido', true );
+                $order->set_status('by-customer');
+                $order->add_order_note('Payment Received', true );
                 add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
                 $order->save();
                 return;
@@ -1190,7 +1334,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             */
 			
 			if ($decoded->order->status == 3 ){ //cancelled
-				$order->update_status('wc-cancelled', sprintf( __( 'A Ordem foi cancelada', 'woocommerce-gateway-parcelow' ) ) );
+				$order->update_status('wc-cancelled', sprintf( __( 'Cancelled', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
             
@@ -1199,7 +1343,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Ou quando a Cielo retorna código não reversível (sem possibilidade de nova tentativa).
             */
 			if ($decoded->order->status == 4){ // Declined 
-				$order->update_status('wc-failed', sprintf( __( 'Pagamento falhou', 'woocommerce-gateway-parcelow' ) ) );
+				$order->update_status('wc-failed', sprintf( __( 'Failed', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
@@ -1207,8 +1351,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Quando a order é feita por TED ou PIX, fica nesse status até que a Parcelow analise e marque como pago.
             */
             if ($decoded->order->status == 5){
-				$order->update_status( 'waiting-receipt' );
-                $order->add_order_note('Aguardando Recibo', true );
+				$order->update_status('wp-waiting-receipt', sprintf( __( 'Awaiting Receipt', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
@@ -1217,8 +1360,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             até que a Parcelow confirme documentos pessoais enviados pelo comprador.
             */
             if ($decoded->order->status == 6){
-				$order->update_status( 'waiting-docs' );
-                $order->add_order_note('Aguardando Documentos', true );
+                $order->update_status('wc-waiting-docs', sprintf( __( 'Awaiting Docs', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
@@ -1227,7 +1369,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             diferente do nome do comprador, até que  a Parcelow decida marcar como PAID ou DECLINED.
             */
             if ($decoded->order->status == 7){
-                $order->update_status('in-review', sprintf( __( 'Em Revisão', 'woocommerce-gateway-parcelow' ) ) );
+                $order->update_status('wc-in-review', sprintf( __( 'In Review', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 
@@ -1235,18 +1377,15 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             Quando a Konduto (antifraude) marca a order como REVIEW, até que a Parcelow decida marcar como PAID ou DECLINED.
             */
             if ($decoded->order->status == 8){
-                $order->set_status('in-antifraund-rev');
-                $order->add_order_note('Revisão Antifraude', true );
-                add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
-                $order->save();
-                return;
+                $order->update_status('wc-in-antifraund', sprintf( __( 'In Antifraund', 'woocommerce-gateway-parcelow' ) ) );
+				return;
 			}
 
             /*
             Quando a Cielo não autoriza o pagamento, fica nesse status Aguardando Pagamento, até que o comprador faça uma nova tentativa de pagamento.
             */
             if ($decoded->order->status == 9){
-                $order->update_status('waiting-payment', sprintf( __( 'Aguardando pagamento.', 'woocommerce-gateway-parcelow' ) ) );
+                $order->update_status('wc-waiting-payment', sprintf( __( 'Awaiting Payment', 'woocommerce-gateway-parcelow' ) ) );
 				return;
 			}
 

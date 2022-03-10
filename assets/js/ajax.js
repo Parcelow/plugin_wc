@@ -217,22 +217,16 @@ $(document).ready(function($){
                         console.log(error);
                     },
                     success: function (qrc) {
-                        //$(target).html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+
                         $(target).html('');
-                        var link = '<h5 class="text-center">Clique no link abaixo para gerar o QRCODE.</h5><br><br><p class="text-center"><a target="_blank" href="'+qrc.link+'">'+qrc.link+'</a></p><br><br>';
-                        link += '<div id="boxQRCODE" style="margin:0 auto;width:300px;height:300px;"></div>';
+                        var link = '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' + qrc.link + '" title="QR CODE PARCELOW" /></div><br><br>';
+                        link += '<h5 class="text-center">Link para gerar QR Code.</h5><br><br><p class="text-center" style="text-align: center;width: 100%;display: inline-block;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;direction: ltr;"><a target="_blank" href="'+qrc.link+'">'+qrc.link+'</a></p>';
+                        
                         link += '<br><br>';
                         link += '<div id="timer" style="text-align: center; font-size: 2em;font-weight: bold;"></div>';
                         link += '<p style="text-align: center;">Tempo restante para fechar a tela.</p>';
                         $(target).html(link);
-                        new QRCode(document.getElementById("boxQRCODE"), {
-                            text: qrc.link,
-                            width: 300,
-                            height: 300,
-                            colorDark : "#000000",
-                            colorLight : "#ffffff",
-                            correctLevel : QRCode.CorrectLevel.H
-                        });
+
     
                         var pageURL = $(location).attr("href");
                         pageURL = pageURL.replaceAll("?show_parcelow", "");
@@ -339,7 +333,7 @@ $(document).ready(function($){
                                     pageURL = pageURL.replaceAll("?show_parcelow", "");
                                     window.location.href = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
                                 
-                                }, 6000);
+                                }, 3000);
                             } else{
                                 $(target).html('<br><br><div class="alert alert-danger"><i class="bi bi-x-circle"></i> ' + ret[1] + '</div><br><br>');
                             }
