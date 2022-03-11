@@ -5,11 +5,11 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.0.3
- * Requires at least: 5.9.1
- * Tested up to: 5.9.1
- * WC requires at least: 6.1.0
- * WC tested up to: 6.1.0
+ * Version: 1.2
+ * Requires at least: 5.9.2
+ * Tested up to: 5.9.2
+ * WC requires at least: 6.3.1
+ * WC tested up to: 6.3.1
  * Text Domain: parcelow
  * Domain Path: /languages
  *
