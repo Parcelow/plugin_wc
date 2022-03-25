@@ -5,8 +5,8 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.2
- * Requires at least: 5.9.2
+ * Version: 1.3
+ * Requires at least: 5.9
  * Tested up to: 5.9.2
  * WC requires at least: 6.3.1
  * WC tested up to: 6.3.1
@@ -919,7 +919,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
         public function writehtml()
         {
-            echo "<div id='boxHTMLModalParcelow'></div>";
+            //echo "<div id='boxHTMLModalParcelow'></div>";
         }
 
 

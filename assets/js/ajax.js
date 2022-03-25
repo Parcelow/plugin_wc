@@ -8,6 +8,9 @@ if(uri_parc.indexOf("show_parcelow") !== -1){
 
 $(document).ready(function($){
     //e.preventDefault();
+    $('body').append('<div id="boxHTMLModalParcelow"></div>');
+
+
 
     if(exist_parc == true){
         jQuery.ajax({
@@ -32,7 +35,7 @@ $(document).ready(function($){
                         });
                         myModal.show();
                         wcppa_getQuestions('#boxQuestions', ped_cod_parcelow, acc, apihost);
-                    }, 3000);
+                    }, 1000);
 
                 }
             },
@@ -121,7 +124,6 @@ $(document).ready(function($){
         });
     }
 
-
     function wcppa_iniJS()
     {
         jQuery(document).ready(function($){
@@ -141,11 +143,14 @@ $(document).ready(function($){
             $( "#btn_finaliza_com_cartao" ).on( "click", function() {
                 wcppa_finalizaPedidoCartao('#boxMsgFinalizaCard');
             });
+
+
+
     
             
             function wcppa_responseQuestion(target)
             {
-                var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
+                var base = $('#WCPPA_PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
                 var acc = $('#PARCELOW_ACC').val();
                 var apihost = $('#PARCELOW_API_HOST').val();
@@ -190,7 +195,7 @@ $(document).ready(function($){
     
             function wcppa_pagarComPix(target)
             {
-                var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
+                var base = $('#WCPPA_PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
                 var acc = $('#PARCELOW_ACC').val();
                 var apihost = $('#PARCELOW_API_HOST').val();
@@ -220,12 +225,15 @@ $(document).ready(function($){
 
                         $(target).html('');
                         var link = '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' + qrc.link + '" title="QR CODE PARCELOW" /></div><br><br>';
-                        link += '<h5 class="text-center">Link para gerar QR Code.</h5><br><br><p class="text-center" style="text-align: center;width: 100%;display: inline-block;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;direction: ltr;"><a target="_blank" href="'+qrc.link+'">'+qrc.link+'</a></p>';
-                        
+                        link += '<br><br><p class="text-center"><img onclick="navigator.clipboard.writeText(\'' + qrc.link + '\');$(\'#box_parcelow_alert\').css(\'display\',\'block\');" style="cursor:pointer;" src="' + base + 'assets/imgs/copiaecola.png"></p>';
+                        link += '<br><div id="box_parcelow_alert" style="display:none;"><div class="alert alert-success text-center" role="alert">Copiado com sucesso.</div></div>';
+
                         link += '<br><br>';
                         link += '<div id="timer" style="text-align: center; font-size: 2em;font-weight: bold;"></div>';
                         link += '<p style="text-align: center;">Tempo restante para fechar a tela.</p>';
                         $(target).html(link);
+
+                        
 
     
                         var pageURL = $(location).attr("href");
@@ -235,10 +243,7 @@ $(document).ready(function($){
                         display = $('#timer');
                         wcppa_startTimer(60, display, pageURL);
     
-                        //window.open(qrc,'new_win');
-    
-                        
-    
+
                     },
                     beforeSend: function () {
                         $(target).html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
@@ -269,7 +274,7 @@ $(document).ready(function($){
     
             function wcppa_finalizaPedidoCartao(target)
             {
-                var base = $('#PARCELOW_GATEWAY_PLUGIN_URL').val();
+                var base = $('#WCPPA_PARCELOW_GATEWAY_PLUGIN_URL').val();
                 var order_id = $('#PARCELOW_COD_PED').val();
                 var acc = $('#PARCELOW_ACC').val();
                 var apihost = $('#PARCELOW_API_HOST').val();
