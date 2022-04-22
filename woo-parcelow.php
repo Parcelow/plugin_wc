@@ -5,11 +5,11 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.3
+ * Version: 1.9
  * Requires at least: 5.9
- * Tested up to: 5.9.2
+ * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
- * WC tested up to: 6.3.1
+ * WC tested up to: 6.4.1
  * Text Domain: parcelow
  * Domain Path: /languages
  *
@@ -27,6 +27,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Parcelow. If not, see https://www.gnu.org/licenses/gpl-2.0.html.
 */
+
+
 
  /////////////////////////////////////////////////////////////////////////////////////////////////
 //CUSTOM STATUS
@@ -153,10 +155,30 @@ function wcppa_add_order_statuses_9( $order_statuses ) {
 }
 add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_9' );
 
+/////////////////////////////////////////////////////////////////
+// 12 - wc-expired
+function wcppa_register_post_statuses_12() {
+    register_post_status( 'wc-expired', array(
+        'label'                     => _x( 'Expired Payment', 'WooCommerce Order status', 'text_domain' ),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop( 'Expired Payment (%s)', 'Expired Payment (%s)', 'text_domain' )
+    ) );
+}
+add_filter( 'init', 'wcppa_register_post_statuses_12' );
+
+function wcppa_add_order_statuses_12( $order_statuses ) {
+    $order_statuses['wc-expired'] = _x( 'Expired Payment', 'WooCommerce Order status', 'text_domain' );
+    return $order_statuses;
+}
+add_filter( 'wc_order_statuses', 'wcppa_add_order_statuses_12' );
+
 
 
 //CUSTOM STATUS
- /////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
  
 function wcppa_register_paid_by_customer() {
@@ -220,33 +242,11 @@ function wcppa_custom_woocommerce_billing_fields($fields)
     return $fields;
 }
 
-/*
- * This action hook registers our PHP class as a WooCommerce payment gateway
- */
 define('WCPPA_PARCELOW_GATEWAY_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 global $wp;
-//$current_url = home_url($_SERVER['REQUEST_URI']);
-//http://localhost/wp/wp/?wc-ajax=checkout
-//$current_url = explode("?", $current_url);
-//define('PARCELOW_URL_ATUAL', $current_url[0]."checkout");
 
 
-/** Add Valor Aproximado ao lado de cada produto */ 
-add_filter( 'woocommerce_get_price_html', 'wcppa_add_approximately_price', 10, 2 );
-function wcppa_add_approximately_price( $price_html, $product ) {
-    if(class_exists('WOOMULTI_CURRENCY_F_Data')){
-        $settingMC= new WOOMULTI_CURRENCY_F_Data();
-        $valorReais= $settingMC->get_list_currencies()[ 'BRL' ]['rate'];
-        // $settingMC->getcookie( 'wmc_currency_rate' );
-        $unit_price= $product->get_price();
-        if( $settingMC->get_enable() && !empty($unit_price)  && 'USD' ==  $settingMC->get_current_currency()  ){
-            $priceReais= $product->get_price() * $valorReais;
-            $price_html = '<span class="amount">'. wc_price( $unit_price ) . '<br/><small>Aprox R$ '. number_format($priceReais, 2, ",", ".") . '</small></span>';
-        }
-    } 
-    return  $price_html;
-}
 
 add_filter( 'woocommerce_payment_gateways', 'wcppa_parcelow_add_gateway_class' );
 
@@ -482,6 +482,8 @@ function wcppa_carrega_ajax()
 
     } else if(sanitize_text_field($_POST["acao"]) == 'WC_PARCELOW_TOTAL'){
         
+        $moeda = get_option('woocommerce_currency');
+
         $order_id = sanitize_text_field($_POST["order_id"]);
         $access_token = sanitize_text_field($_POST["acc"]);
         $apihost = sanitize_text_field($_POST["apihost"]);
@@ -490,7 +492,36 @@ function wcppa_carrega_ajax()
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
 
-        $payload = array(
+        $dolar = 0;
+        if($moeda == 'BRL'){
+            $payload = array(
+                'method' => 'GET',
+                'headers' => array(
+                    'Authorization' => $access_token,
+                    'Content-Type' => "application/x-www-form-urlencoded",
+                        'Accept' => "application/json"
+                    ),
+                'timeout' => 90
+            );
+            $urlapi = $apihost . "/api/simulate?amount=" . $total;
+    
+            $response = wp_remote_get($urlapi , $payload );
+            if (is_wp_error($response)) {
+                throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+            }
+        
+            if (empty($response['body'])) {
+                throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+            }
+    
+            $o = json_decode( wp_remote_retrieve_body( $response ) );
+            $dolar = $o->data->dolar;
+        }
+
+
+
+
+        $payload2 = array(
             'method' => 'GET',
             'headers' => array(
                 'Authorization' => $access_token,
@@ -499,22 +530,34 @@ function wcppa_carrega_ajax()
                 ),
             'timeout' => 90
         );
-        $urlapi = $apihost . "/api/simulate?amount=" . $total;
 
-        $response = wp_remote_get($urlapi , $payload );
-        if (is_wp_error($response)) {
+        if($dolar > 0 && $moeda == 'BRL'){
+            $total = $total / $dolar;
+        }
+
+        $urlapi2 = $apihost . "/api/simulate?amount=" . $total;
+        
+
+        $response2 = wp_remote_get($urlapi2 , $payload2 );
+        if (is_wp_error($response2)) {
             throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
         }
     
-        if (empty($response['body'])) {
+        if (empty($response2['body'])) {
             throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
         }
 
-        $json = json_decode( wp_remote_retrieve_body( $response ) );
+        $json = json_decode( wp_remote_retrieve_body( $response2 ) );
+        $dolar = $json->data->dolar;
+        $ted = $json->data->ted->amount;
         $json = $json->data->creditcard->installments;
+        
         $retorno = [
             "status" => 1,
-            "json" => json_encode($json)
+            "json" => json_encode($json),
+            "moeda" => json_encode($moeda),
+            "dolar" => $dolar,
+            "total_geral" => $ted
         ];
         echo wp_send_json($retorno);
 
@@ -665,40 +708,40 @@ function wcppa_carrega_ajax()
                         <div class="row">
                         
                             <div class="col-md-12">
-                                <h3>Enter the Card data</h3>
+                                <h3>Digite os dados do cartão</h3>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="card_name">Name printed on Card <span style="color:red;">*</span></lablel>
+                                    <label for="card_name">Nome impresso no cartão <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_name" id="card_name" value="' . get_user_meta( get_current_user_id(), 'billing_first_name', true ) .' ' . get_user_meta( get_current_user_id(), 'billing_last_name', true ) .'">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="card_numero">Card number <span style="color:red;">*</span></lablel>
+                                    <label for="card_numero">Número do cartão <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_numero" id="card_numero" maxlength="16" value="">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="card_cvv">CVV <span style="color:red;">*</span></lablel>
+                                    <label for="card_cvv">Código de Segurança - CVV <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value="">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="card_data_valid">Expiration date <span style="color:red;">*</span></lablel>
+                                    <label for="card_data_valid">Data de expiração <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="MM/YYYY" name="card_data_valid" id="card_data_valid" value="">
                                 </div>
                             </div>
                             
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="card_parcelas">Select the number of installments <span style="color:red;">*</span></lablel>
+                                    <label for="card_parcelas">Selecione o número de parcelas <span style="color:red;">*</span></lablel>
                                     <select class="form-control" name="card_parcelas" id="card_parcelas">
         
                                     </select>
@@ -710,55 +753,55 @@ function wcppa_carrega_ajax()
                             </div>
         
                             <div class="col-md-12">
-                                <h6>Card billing address</h6>
+                                <h6>Endereço de cobrança</h6>
                                 <br>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_cep">Postcode / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></lablel>
+                                    <lablel for="card_cep">CEP / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_cep" id="card_cep" value="' . get_user_meta( get_current_user_id(), 'billing_postcode', true ) . '">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street">Street <span style="color:red;">*</span></lablel>
+                                    <lablel for="card_street">Endereço <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . get_user_meta( get_current_user_id(), 'billing_address_1', true ) . '">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street_number">Number <span style="color:red;">*</span></lablel>
+                                    <lablel for="card_street_number">Número <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street_number" id="card_street_number" value="' . get_user_meta( get_current_user_id(), 'address_number', true ) . '">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street_supplement">Supplement </lablel>
+                                    <lablel for="card_street_supplement">Complemento </lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street_supplement" id="card_street_supplement">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street_bairro">Neighborhood of billing address <span style="color:red;">*</span></lablel>
+                                    <lablel for="card_street_bairro">Bairro <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street_bairro" id="card_street_bairro" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street_city">City <span style="color:red;">*</span></lablel>
+                                    <lablel for="card_street_city">Cidade <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street_city" id="card_street_city" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
                                 </div>
                             </div>
         
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <lablel for="card_street_state">State <span style="color:red;">*</span></lablel>
+                                    <lablel for="card_street_state">Estado <span style="color:red;">*</span></lablel>
                                     <input type="text" class="form-control" placeholder="" name="card_street_state" id="card_street_state" value="' . get_user_meta( get_current_user_id(), 'billing_state', true ) . '">
                                 </div>
                             </div>
@@ -845,16 +888,17 @@ function wcppa_woocommerce_gateway_parcelow_init() {
  		 */
  		public function __construct() 
         {
-
-            
-            
-
             $this->id = 'parcelow'; // payment gateway plugin ID
             //$this->icon = WCPPA_PARCELOW_GATEWAY_PLUGIN_URL.'assets/imgs/gateway_parcelow_img.jpg';
-            $this->title = $this->get_option('metodo_pagto_parcelow');
+            if( !is_checkout()){ // tela admin detalhes do pedido
+                $this->title = 'Parcelow';
+            }else{ // tela de checkout pagamento
+                $this->title = $this->get_option('metodo_pagto_parcelow');
+            }
+
             $this->has_fields = false; // in case you need a custom credit card form
             $this->method_title = 'Parcelow Transparent Gateway';
-            $this->method_description = 'Pague sem taxas escondidas e com segurança'; // will be displayed on the options page
+            $this->method_description = 'Before publishing your site. Run all tests in the sandbox. Communicate to Parcelow to carry out the necessary validations.'; // will be displayed on the options page
 
             $this->supports = array(
                 'products'
@@ -875,6 +919,9 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             $ambiente = $this->get_option('ambiente');
             $this->ambiente = $ambiente;
 
+            //$this->parc_val_aprox = $this->get_option('parc_val_aprox');
+            $this->parc_dolar_atual = $this->get_option('parc_dolar_atual');
+
             $secret_key_sandbox = $this->get_option('secret_key_sandbox');
             $client_id_sandbox = $this->get_option('client_id_sandbox');
 
@@ -890,6 +937,34 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 $this->client_id = $client_id_producao;
                 $this->host = $this->get_option('host_producao');
             }
+            
+            //$parc_val_aprox = $this->parc_val_aprox;
+
+            if ( !is_admin() ) {
+                
+            
+                //WC()->session->set('WCPPA_OPT_REAL_SIMULATOR', sanitize_text_field($parc_val_aprox));
+                /*
+                WC()->session->set('WCPPA_OPT_AMBIE', sanitize_text_field($ambiente));
+                WC()->session->set('WCPPA_OPT_ENABLE', sanitize_text_field($this->get_option('enabled')));
+                WC()->session->set('WCPPA_OPT_MOEDA', sanitize_text_field($this->get_option('woocommerce_currency')));
+    
+                WC()->session->set('WCPPA_OPT_KEY_SAND', sanitize_text_field($secret_key_sandbox));
+                WC()->session->set('WCPPA_OPT_ID_SAND', sanitize_text_field($client_id_sandbox));
+    
+                WC()->session->set('WCPPA_OPT_KEY_PROD', sanitize_text_field($secret_key_producao));
+                WC()->session->set('WCPPA_OPT_ID_PROD', sanitize_text_field($client_id_producao));
+    
+                WC()->session->set('WCPPA_OPT_HOST_API_SAND', sanitize_text_field($this->get_option('host_sandbox')));
+                WC()->session->set('WCPPA_OPT_HOST_API_PROD', sanitize_text_field($this->get_option('host_producao')));
+                */
+                
+
+
+                
+            }
+
+
 
             //$this->title .= "<br>" . $this->host;
             // Save settings
@@ -902,20 +977,23 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 // class will be used instead
                 add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 				add_action( 'woocommerce_webhook_process_delivery', 'wcppa_my_custom_wc_webhook_process_delivery', 10, 2 );
+                
 				/*https://woocommerce.wordpress.com/2017/12/08/wc-3-3-new-webhooks-crud/ */
 			}
-
+            /*
             if(class_exists('WOOMULTI_CURRENCY_F_Data')){
                 $settingMC= new WOOMULTI_CURRENCY_F_Data();
                 $this->moedaSelecionada= $settingMC->get_current_currency(); // moeda selecionada no produto
                 $this->valorReais= $settingMC->get_list_currencies()[ 'BRL' ]['rate'];
                 //$settingMC->getcookie( 'wmc_currency_rate' );
                 $this->enableMultiCurrency=  $settingMC->get_enable();              
-            } 
+            } */
 
             $this->writehtml();
 
         }
+
+
 
         public function writehtml()
         {
@@ -938,13 +1016,16 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 		function wcppa_my_custom_wc_webhook_process_delivery( $webhook, $arg ) {
 				print_r($arg);
 		}
-
+        
 		/**
  		 * Plugin options, we deal with it in Step 3 too
  		 */
- 		public function init_form_fields(){
+ 		function init_form_fields()
+        {
             global $wp; 
-             $this->form_fields = array(
+
+            $this->form_fields = array(
+
                 'enabled' => array(
                     'title'       => 'Enable/Disable',
                     'label'       => 'Enable Parcelow Gateway',
@@ -952,64 +1033,86 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     'description' => '',
                     'default'     => 'yes'
                 ),
+
                 'ambiente' =>  array(
-                    'title'       => 'Ambiente ativo atual',
-                    'label'       => __('Tipos de ambiente', 'woocommerce'),
+                    'title'       => 'Current active environment',
+                    'label'       => __('Environment types', 'woocommerce'),
                     'placeholder' => _x('', 'placeholder', 'woocommerce'),
                     'required'    => false,
                     'clear'       => false,
                     'type'        => 'select',
                     'options'     => array(
                         0 => __('SANDBOX', 'woocommerce' ),
-                        1 => __('PRODUÇÃO', 'woocommerce' )
+                        1 => __('PRODUCTION', 'woocommerce' )
                         )
                     ),
 
                 'host_sandbox' => array(
-                    'title'       => 'Host sandbox (teste)',
+                    'title'       => 'Santbox Host (test)',
                     'type'        => 'text',
                     'default'     => 'https://sandbox.parcelow.com',
-                    'description' => 'Host de testes',
-                ),
-                'host_producao' => array(
-                    'title'       => 'Host produção',
-                    'type'        => 'text',
-                    'default'     => 'https://app.parcelow.com',
-                    'description' => 'Host de produção',
+                    'description' => 'URL of tests',
                 ),
 
-				'client_id_sandbox' => array(
+                'client_id_sandbox' => array(
                     'title'       => 'Client id sandbox',
-                    'type'        => 'text'
+                    'type'        => 'text',
+                    'description' => 'Unique identifier in the system.',
                 ),
+
                 'secret_key_sandbox' => array(
                     'title'       => 'Secret key sandbox',
-                    'type'        => 'text'
+                    'type'        => 'text',
+                    'description' => 'Sandbox key provided by Parcelow for testing.',
                 ),
 
+                'host_producao' => array(
+                    'title'       => 'Production Host',
+                    'type'        => 'text',
+                    'default'     => 'https://app.parcelow.com',
+                    'description' => 'URL of production',
+                ),
 
 				'client_id_producao' => array(
-                    'title'       => 'Client id produção',
-                    'type'        => 'text'
+                    'title'       => 'Client id production',
+                    'type'        => 'text',
+                    'description' => 'Unique identifier in the system.',
                 ),
                 'secret_key_producao' => array(
-                    'title'       => 'Secret key produção',
-                    'type'        => 'text'
+                    'title'       => 'Secret key production',
+                    'type'        => 'text',
+                    'description' => 'Production key provided by Parcelow for testing.',
                 ),
 
                 'metodo_pagto_parcelow' => array(
-                    'title'       => 'Descrição forma de pagamento',
+                    'title'       => 'Description form of payment',
                     'type'        => 'textarea',
-                    'description' => 'Esta descrição será o nome do método de pagamento no checkout',
+                    'description' => 'This description will be the name of the payment method at checkout',
                     'default'     => 'Parcelow - Pague em até 12x em reais.',
                 ),
 
                 'webHook' => array(
                     'title'       => 'WebHook',
                     'type'        => 'textarea',
-                    'description' => 'Link que receberá o status dos pedidos da API',
+                    'description' => 'Link that will receive the status of API requests',
                     'default'     => home_url( $wp->request ).'/wc-api/parcelow_webhook',
                 ),
+
+                'parc_val_aprox' =>  array(
+                    'title'       => 'Simulator',
+                    'description' => 'Add text on prices, for example - Or 12 payments of R$ 500,12 by Parcelow',
+                    'label'       => __('Real Simulator', 'woocommerce'),
+                    'placeholder' => _x('', 'placeholder', 'woocommerce'),
+                    'required'    => false,
+                    'clear'       => false,
+                    'type'        => 'select',
+                    'options'     => array(
+                        0 => __('YES', 'woocommerce' ),
+                        1 => __('NO', 'woocommerce' )
+                        )
+                    )
+                    
+
             );
          }
 
@@ -1045,8 +1148,34 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             return $vlr;
         }
 		
-		function oauthAccesssToken(){
-		    
+		function oauthAccesssToken()
+        {
+            // Method with all the options fields
+            $this->init_form_fields();
+
+            // Load the settings.
+            $this->init_settings();
+
+            $this->enabled = $this->get_option('enabled');
+            $ambiente = $this->get_option('ambiente');
+            $this->ambiente = $ambiente;
+
+            $secret_key_sandbox = $this->get_option('secret_key_sandbox');
+            $client_id_sandbox = $this->get_option('client_id_sandbox');
+
+            $secret_key_producao = $this->get_option('secret_key_producao');
+            $client_id_producao = $this->get_option('client_id_producao');
+
+            if($ambiente == '0'){
+                $this->secret_key = $secret_key_sandbox;
+                $this->client_id = $client_id_sandbox;
+                $this->host = $this->get_option('host_sandbox');
+            } else{
+                $this->secret_key = $secret_key_producao;
+                $this->client_id = $client_id_producao;
+                $this->host = $this->get_option('host_producao');
+            }
+
 			$reqJson = array('client_id' => $this->client_id,
 							  'client_secret' => $this->secret_key,
 							  'grant_type' => "client_credentials");
@@ -1081,6 +1210,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             $order = wc_get_order( $order_id );
             //$order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
 
+            $REFERENCE = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
+
             /* Array with parameters for API interaction */
             $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
             $args = array(
@@ -1098,7 +1229,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 				'client[address_state]' => sanitize_text_field($_POST['billing_state']),
                 'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
 				'shipping[amount]' => $order->get_total_shipping() * 100,
-				'reference' => $this->wcppa_geraCODRandNumber(6) . "_" . $order_id
+				'reference' => $REFERENCE
             );
 
 			$i=0; 
@@ -1113,7 +1244,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 $quantity = $item->get_quantity();
             
                 $price = ($order->get_item_subtotal($item,false)) * 100;
-                $price= $this->calcMultiCurrencyBRLtoUSD($price); // BRL change to USD
+                $price = $this->calcMultiCurrencyBRLtoUSD($price); // BRL change to USD
                 $item_name= $name;
    
                 $args= array_merge($args, array('items['.$i.'][description]' => $item_name,
@@ -1148,7 +1279,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             
             //print_r($args);
 
-            $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token);
+            $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token, $REFERENCE);
 
             if($existOrder == false)
             {
@@ -1163,7 +1294,15 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     'body' =>  $args,
                     'timeout' => 90
                 );
-                $urlapi = $this->host . '/api/orders/brl';
+
+                $moeda = get_option('woocommerce_currency');
+
+                $urlapi = $this->host . '/api/orders';
+
+                if($moeda == 'BRL'){
+                    $urlapi .= '/brl';
+                }
+                
                 
                 $response = wp_remote_post(  $urlapi, $payload );
                 if (is_wp_error($response)) {
@@ -1207,8 +1346,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                         'redirect' => "?show_parcelow"
                     ];
                 } else {
-                    wc_add_notice(  'Please try again.', 'error' );
-                    print_r( $response );
+                    wc_add_notice(  $body['message'], 'error' );
+                    //print_r( $response );
                     return;
                 }
             } else{
@@ -1222,10 +1361,22 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
         public function wcppa_geraCODRandNumber($n)
         {
-            return "WC".strtoupper( substr(uniqid(mt_rand()), 0, $n) );
+            $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+            $client_id_producao = $obj["client_id_producao"];
+            $ambiente = $obj["ambiente"];
+            $client_id_sandbox = $obj["client_id_sandbox"];
+        
+            if($ambiente == 0){ //sandbox
+                $client_id = $client_id_sandbox;
+            } else{
+                $client_id = $client_id_producao;
+            }
+
+            //return $client_id."-WC".strtoupper( substr(uniqid(mt_rand()), 0, $n) );
+            return $client_id."-WC";
         }
 
-        public function wcppa_checkExistOrderNaParcelow($order_id, $token)
+        public function wcppa_checkExistOrderNaParcelow($order_id, $token, $REFERENCE)
         {
             $payload = array(
                 'method' => 'GET',
@@ -1236,7 +1387,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     ),
                 'timeout' => 90
             );
-            $urlapi = $this->host . '/api/order/' . $order_id;
+            $urlapi = $this->host . '/api/orders/reference/' . $REFERENCE;
 
             $response = wp_remote_get($urlapi , $payload );
             if (is_wp_error($response)) {
@@ -1248,22 +1399,19 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                 throw new Exception(__('Parcelow.com\'s Response was not get any data.', 'wc-gateway-nequi'));
             }
 
-            $json = json_decode( wp_remote_retrieve_body( $response ) );
-            $order_id_parcelow = $json->data->reference;
-            $pos = strpos($order_id_parcelow, '_');
-            if ($pos !== true) {
+            $result = wp_remote_retrieve_body( $response );
+            $json = json_decode( $result, true );
+
+            $retid = 0;
+            //echo "DATAID = " . $json["data"][0]["id"];
+            if(isset($json["data"][0]["id"])){
+                $retid = (int) $json["data"][0]["id"];
+            }
+
+            if($json["success"] == 1 && $retid > 0){
+                return true;
+            } else{
                 return false;
-            } else {
-                $or = explode('_', $order_id_parcelow);
-                if(isset($or[1])) {
-                    if($or[1] > 0 && !is_null($or[1])){
-                        return true;
-                    } else{
-                        return false;
-                    }
-                } else{
-                    return false;
-                }
             }
 
         }
@@ -1271,7 +1419,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 		/*
 		 * In case you need a webhook, like PayPal IPN etc
 		 */
-		public function webhook() {
+		public function webhook()
+        {
 
             function remove_change_comment($id, $comment) {
                 if( strpos($comment->comment_content, 'Status do pedido alterado de') !== false ) {
@@ -1294,104 +1443,407 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 			$decoded = json_decode( $raw_post );
             
             //WC100686_129
-            $num_pedido = explode("_", $decoded->order->reference);
-            $num_pedido = (int) trim($num_pedido[1]);
-			$order = wc_get_order( $num_pedido );
-			
-            /*
-            Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
-            */
-            /*if ($decoded->order->status == 0){ //open
-                $order->set_status('aberto');
-                $order->add_order_note('Order criado', true );
-                add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
-                $order->save();
-                return;
-			}  */
+            if(isset($decoded->order->reference))
+            {
+                $num_pedido = explode("_", $decoded->order->reference);
+                $num_pedido = (int) trim($num_pedido[1]);
+                $order = wc_get_order( $num_pedido );
+                
+                if ($decoded->order->status == 1){ //confirmed
+                    $order->update_status( 'wc-on-hold');
+                    return;
+                }
+    
+                if ($decoded->order->status == 2 ){ //Order paid
+                    $order->set_status('by-customer');
+                    $order->add_order_note('Payment Received', true );
+                    add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
+                    $order->save();
+                    return;
+                }
+    
+                if ($decoded->order->status == 3 ){ //cancelled
+                    $order->update_status('wc-cancelled', sprintf( __( 'Cancelled', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+                
+                if ($decoded->order->status == 4){ // Declined 
+                    $order->update_status('wc-failed', sprintf( __( 'Failed', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+    
+                if ($decoded->order->status == 5){
+                    $order->update_status('wp-waiting-receipt', sprintf( __( 'Awaiting Receipt', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+    
+                if ($decoded->order->status == 6){
+                    $order->update_status('wc-waiting-docs', sprintf( __( 'Awaiting Docs', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+
+                if ($decoded->order->status == 7){
+                    $order->update_status('wc-in-review', sprintf( __( 'In Review', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+
+                if ($decoded->order->status == 8){
+                    $order->update_status('wc-in-antifraund', sprintf( __( 'In Antifraund', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+    
+                if ($decoded->order->status == 9){
+                    $order->update_status('wc-waiting-payment', sprintf( __( 'Awaiting Payment', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+
+                /*
+                Quando o pedido é expirado
+                */
+                if ($decoded->order->status == 12){
+                    $order->update_status('wc-expired', sprintf( __( 'Expired Payment', 'woocommerce-gateway-parcelow' ) ) );
+                    return;
+                }
+
+                
+    
+                $order->add_order_note('On Hold', true );
+                return; 
+            }
+
+            return;
             
-            /*
-            Quando o usuário acessa a tela de pagamento, e informa seus dados pessoais, a order é CONFIRMADA.
-            */
-            if ($decoded->order->status == 1){ //confirmed
-				$order->update_status( 'wc-on-hold');
-				return;
-			}
-
-            /*
-            Quando o usuário realiza o pagamento, e ele é capturado pela Cielo.
-            Ou quando o ADMIN, assincronamente, marca a order como pago.
-            */
-			if ($decoded->order->status == 2 ){ //Order paid
-                $order->set_status('by-customer');
-                $order->add_order_note('Payment Received', true );
-                add_action('wp_insert_comment', 'remove_change_comment', 10, 2);
-                $order->save();
-                return;
-			}
-
-            /*
-            Quando a order é cancelada pela Parcelow, ou pelo Partner.
-            */
-			
-			if ($decoded->order->status == 3 ){ //cancelled
-				$order->update_status('wc-cancelled', sprintf( __( 'Cancelled', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-            
-            /*
-            Quando a order é marcada como DECLINED pela Parcelow.
-            Ou quando a Cielo retorna código não reversível (sem possibilidade de nova tentativa).
-            */
-			if ($decoded->order->status == 4){ // Declined 
-				$order->update_status('wc-failed', sprintf( __( 'Failed', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-            /*
-            Quando a order é feita por TED ou PIX, fica nesse status até que a Parcelow analise e marque como pago.
-            */
-            if ($decoded->order->status == 5){
-				$order->update_status('wp-waiting-receipt', sprintf( __( 'Awaiting Receipt', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-            /*
-            Quando a order possui valor maior que USD $ 3,000.00, após a confirmação de pagamento, entra nesse status 
-            até que a Parcelow confirme documentos pessoais enviados pelo comprador.
-            */
-            if ($decoded->order->status == 6){
-                $order->update_status('wc-waiting-docs', sprintf( __( 'Awaiting Docs', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-            /*
-            Quando a order possui suspeita de fraude no cartão de crédito, devido ao nome do titular do cartão ser 
-            diferente do nome do comprador, até que  a Parcelow decida marcar como PAID ou DECLINED.
-            */
-            if ($decoded->order->status == 7){
-                $order->update_status('wc-in-review', sprintf( __( 'In Review', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-            /*
-            Quando a Konduto (antifraude) marca a order como REVIEW, até que a Parcelow decida marcar como PAID ou DECLINED.
-            */
-            if ($decoded->order->status == 8){
-                $order->update_status('wc-in-antifraund', sprintf( __( 'In Antifraund', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-            /*
-            Quando a Cielo não autoriza o pagamento, fica nesse status Aguardando Pagamento, até que o comprador faça uma nova tentativa de pagamento.
-            */
-            if ($decoded->order->status == 9){
-                $order->update_status('wc-waiting-payment', sprintf( __( 'Awaiting Payment', 'woocommerce-gateway-parcelow' ) ) );
-				return;
-			}
-
-			$order->add_order_note('On Hold', true );
-			return; 
 	 	}
  	}
+}
+
+add_action( 'init', 'wcppa_setcookie_control' );
+function wcppa_setcookie_control()
+{
+    if ( !is_admin() ) {
+        $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+        $secret_key_producao = $obj["secret_key_producao"];
+        $client_id_producao = $obj["client_id_producao"];
+        $parc_val_aprox = $obj["parc_val_aprox"];
+        $host_producao = $obj["host_producao"];
+        $host_sandbox = $obj["host_sandbox"];
+    
+        $ambiente = $obj["ambiente"];
+        $client_id_sandbox = $obj["client_id_sandbox"];
+        $secret_key_sandbox = $obj["secret_key_sandbox"];
+        
+        if($ambiente == 0){ //sandbox
+            $client_id = $client_id_sandbox;
+            $secret_key = $secret_key_sandbox; 
+            $host_api = $host_sandbox;
+        } else{
+            $client_id = $client_id_producao;
+            $secret_key = $secret_key_producao;
+            $host_api = $host_producao;
+        }
+        //setcookie( 'WCPPA_OPT_ACC_TOK', '', time() - 43200); //1 mes
+        //setcookie( 'WCPPA_OPT_ACC_TOK_AMBIENTE', '', time() - 43200); //1 mes
+
+        if(isset( $_COOKIE['WCPPA_OPT_ACC_TOK_AMBIENTE'] )){
+            $ambiente_ant = $_COOKIE['WCPPA_OPT_ACC_TOK_AMBIENTE'];
+            if($ambiente_ant != $ambiente){
+                setcookie( 'WCPPA_OPT_ACC_TOK', '', time() - 43200); //1 mes
+                setcookie( 'WCPPA_OPT_ACC_TOK_AMBIENTE', '', time() - 43200); //1 mes
+                //echo "<script>alert('MUDOU AMBIENTE');</script>";
+                echo "<script>location.reload();</script>";
+            } else{
+                //echo "<script>alert('MESMO AMBIENTE');</script>";
+            }
+        }
+        
+        if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
+            $reqJson = array('client_id' => $client_id,
+            'client_secret' => $secret_key,
+            'grant_type' => "client_credentials");
+            $payload = array(
+            'method' => 'POST',
+            'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
+                            'Accept' => "application/json",
+                            'X-Requested-With' => "XMLHttpRequest"
+                    ),
+            'body' =>  $reqJson,
+            'timeout' => 90
+            );
+            $response = wp_remote_post( $host_api . '/oauth/token', $payload );
+            $body = json_decode( wp_remote_retrieve_body( $response ), true );
+            setcookie( 'WCPPA_OPT_ACC_TOK', $body['access_token'], time() + 43200); //1 mes
+            setcookie( 'WCPPA_OPT_ACC_TOK_AMBIENTE', $ambiente, time() + 43200); //1 mes
+            //echo "<script>alert('GEROU NOVO COOKIE ACCESS TOKEN');</script>";
+        } else{
+            //echo "<script>alert('MESMO TOKEN');</script>";
+        }
+    }
+
+    
+}
+
+add_action( 'init', 'wcppa_setcookie_control_dolar' );
+function wcppa_setcookie_control_dolar()
+{
+    if ( !is_admin() )
+    {
+        $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+        $secret_key_producao = $obj["secret_key_producao"];
+        $client_id_producao = $obj["client_id_producao"];
+        $parc_val_aprox = $obj["parc_val_aprox"];
+        $host_producao = $obj["host_producao"];
+        $host_sandbox = $obj["host_sandbox"];
+    
+        $ambiente = $obj["ambiente"];
+        $client_id_sandbox = $obj["client_id_sandbox"];
+        $secret_key_sandbox = $obj["secret_key_sandbox"];
+    
+        if($ambiente == 0){ //sandbox
+            $client_id = $client_id_sandbox;
+            $secret_key = $secret_key_sandbox; 
+            $host_api = $host_sandbox;
+        } else{
+            $client_id = $client_id_producao;
+            $secret_key = $secret_key_producao;
+            $host_api = $host_producao;
+        }
+
+        if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
+            $reqJson = array('client_id' => $client_id,
+            'client_secret' => $secret_key,
+            'grant_type' => "client_credentials");
+            $payload = array(
+            'method' => 'POST',
+            'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
+                            'Accept' => "application/json",
+                            'X-Requested-With' => "XMLHttpRequest"
+                    ),
+            'body' =>  $reqJson,
+            'timeout' => 90
+            );
+            $response = wp_remote_post( $host_api . '/oauth/token', $payload );
+            $body = json_decode( wp_remote_retrieve_body( $response ), true );
+            $access_token = "Bearer ". $body['access_token'];
+        } else{
+            $access_token = "Bearer ". $_COOKIE['WCPPA_OPT_ACC_TOK'];
+        }
+    
+        $payload = array(
+            'method' => 'GET',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90
+        );
+        $urlapi = $host_api . "/api/simulate?amount=100.00";
+        $response = wp_remote_get($urlapi , $payload );
+        $o = json_decode( wp_remote_retrieve_body( $response ), true );
+        $dolar = 0;
+        if(isset($o["data"]["dolar"])){
+            $dolar = $o["data"]["dolar"];
+        }
+        setcookie( 'WCPPA_OPT_DOLAR', $dolar, time() + 300);
+    }
+
+    
+}
+
+add_action( 'wp_head', 'wcppa_getcookie_control' );
+function wcppa_getcookie_control() {
+    $alert = isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] ) ? $_COOKIE['WCPPA_OPT_ACC_TOK'] : 'not set';
+    //echo "<script type='text/javascript'>alert('$alert')</script>";
+}
+
+
+
+/** Add Valor Aproximado ao lado de cada produto */ 
+add_filter( 'woocommerce_get_price_html', 'add_approximately_price', 10, 2 );
+function add_approximately_price( $price_html, $product)
+{
+    $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+    $secret_key_producao = $obj["secret_key_producao"];
+    $client_id_producao = $obj["client_id_producao"];
+    $parc_val_aprox = $obj["parc_val_aprox"];
+    $host_producao = $obj["host_producao"];
+    $host_sandbox = $obj["host_sandbox"];
+
+    $ambiente = $obj["ambiente"];
+    $client_id_sandbox = $obj["client_id_sandbox"];
+    $secret_key_sandbox = $obj["secret_key_sandbox"];
+
+    if($ambiente == 0){ //sandbox
+        $client_id = $client_id_sandbox;
+        $secret_key = $secret_key_sandbox; 
+        $host_api = $host_sandbox;
+    } else{
+        $client_id = $client_id_producao;
+        $secret_key = $secret_key_producao;
+        $host_api = $host_producao;
+    }
+
+    if ( !is_admin() )
+    {
+        
+        $count = 0;
+
+        if($parc_val_aprox == 0)
+        {
+
+            if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
+                $reqJson = array('client_id' => $client_id,
+                'client_secret' => $secret_key,
+                'grant_type' => "client_credentials");
+                $payload = array(
+                'method' => 'POST',
+                'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json",
+                                'X-Requested-With' => "XMLHttpRequest"
+                        ),
+                'body' =>  $reqJson,
+                'timeout' => 90
+                );
+                $response = wp_remote_post( $host_api . '/oauth/token', $payload );
+                $body = json_decode( wp_remote_retrieve_body( $response ), true );
+    
+    
+                //$access_token = "Bearer ". WC()->session->get('WCPPA_OPT_ACC_KEY');
+                $access_token = "Bearer ". $body['access_token'];
+            } else{
+                $access_token = "Bearer ". $_COOKIE['WCPPA_OPT_ACC_TOK'];
+            }
+
+    
+            $lang = get_locale();
+            
+            $leg = "";
+
+            $moeda = get_option('woocommerce_currency');
+            $unit_price = $product->get_price();
+            if( 'USD' ==  $moeda  ){
+                //$aproximamente = $product->get_price() * $dolar;
+                $payload = array(
+                    'method' => 'GET',
+                    'headers' => array(
+                        'Authorization' => $access_token,
+                        'Content-Type' => "application/x-www-form-urlencoded",
+                            'Accept' => "application/json"
+                        ),
+                    'timeout' => 90
+                );
+                $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
+                $response = wp_remote_get($urlapi , $payload );
+                $o = json_decode( wp_remote_retrieve_body( $response ), true );
+                if(isset($o["data"]["creditcard"]["installments"])){
+                    $parcelas = count($o["data"]["creditcard"]["installments"]);
+                    $in = $parcelas - 1;
+                    if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
+                        if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
+                            $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
+                            if($em12x > 0){
+                                $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
+                                if($lang == 'pt_BR'){
+                                    $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
+                                }
+                                $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                            }
+                        }
+                    }
+                }
+            } else if( 'BRL' ==  $moeda  ){
+                $dolar = 0;
+                if(!isset($_COOKIE['WCPPA_OPT_DOLAR'])){
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
+                    $response = wp_remote_get($urlapi , $payload );
+                    $o = json_decode( wp_remote_retrieve_body( $response ), true );
+                    if(isset($o["data"]["dolar"])){
+                        $dolar = $o["data"]["dolar"];
+                    }
+                }else{
+                    $dolar = $_COOKIE['WCPPA_OPT_DOLAR'];
+                }
+
+                //echo $dolar;
+                //echo "DOLAR = " . $_COOKIE['WCPPA_OPT_DOLAR'];
+                
+
+                //RECALCULA
+                $payload = array(
+                    'method' => 'GET',
+                    'headers' => array(
+                        'Authorization' => $access_token,
+                        'Content-Type' => "application/x-www-form-urlencoded",
+                            'Accept' => "application/json"
+                        ),
+                    'timeout' => 90
+                );
+                if($dolar > 0){
+                    $totp = $unit_price / $dolar;
+                    $urlapi = $host_api . "/api/simulate?amount=".$totp;
+                    $response = wp_remote_get($urlapi , $payload );
+                    $o = json_decode( wp_remote_retrieve_body( $response ), true );
+                    if(isset($o["data"]["creditcard"]["installments"])){
+                        $parcelas = count($o["data"]["creditcard"]["installments"]);
+                        $in = $parcelas - 1;
+                        if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
+                            if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
+                                $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
+                                if($em12x > 0){
+                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
+                                    if($lang == 'pt_BR'){
+                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
+                                    }
+                                    $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+            } else{
+                $payload = array(
+                    'method' => 'GET',
+                    'headers' => array(
+                        'Authorization' => $access_token,
+                        'Content-Type' => "application/x-www-form-urlencoded",
+                            'Accept' => "application/json"
+                        ),
+                    'timeout' => 90
+                );
+                $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
+                $response = wp_remote_get($urlapi , $payload );
+                $o = json_decode( wp_remote_retrieve_body( $response ), true );
+                if(isset($o["data"]["creditcard"]["installments"])){
+                    $parcelas = count($o["data"]["creditcard"]["installments"]);
+                    $in = $parcelas - 1;
+                    if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
+                        if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
+                            $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
+                            if($em12x > 0){
+                                $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
+                                if($lang == 'pt_BR'){
+                                    $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
+                                }
+                                $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+    }
+    return  $price_html;
 }
 

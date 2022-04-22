@@ -96,8 +96,16 @@ $(document).ready(function($){
                 apihost: apihost
             },
             success: function (data) {
+                //console.log(data);
+                //console.log("DOLAR = " + data.dolar);
+                //console.log("MOEDA = " + data.moeda);
                 //console.log("PARCELAS = " + data.json);
+                //console.log("PARCELAS = " + data.json);
+                localStorage.setItem('TOTAL_PED_GERAL', data.total_geral);
+
                 var json2 = $.parseJSON(data.json);
+                
+
                 $("#" + target).find('option').remove();
                 $("#" + target).append($("<option value=''>SELECIONE</option>").val('').html("SELECIONE"));
                 //$('select[name=' + target + ']').selectpicker('refresh');
@@ -109,8 +117,27 @@ $(document).ready(function($){
                     //v_mes = v_mes.toFixed(2);
 
                     v_total = obj.total;
+                    
                     //v_total = parseFloat(v_total);
                     //v_total = v_total.toFixed(2);
+
+                    v_mes = v_mes + '';
+                    v_mes = parseInt(v_mes.replace(/[\D]+/g,''));
+                    v_mes = v_mes + '';
+                    v_mes = v_mes.replace(/([0-9]{2})$/g, ",$1");
+    
+                    if (v_mes.length > 6) {
+                        v_mes = v_mes.replace(/([0-9]{3}),([0-9]{2}$)/g, ".$1,$2");
+                    }
+
+                    v_total = v_total + '';
+                    v_total = parseInt(v_total.replace(/[\D]+/g,''));
+                    v_total = v_total + '';
+                    v_total = v_total.replace(/([0-9]{2})$/g, ",$1");
+    
+                    if (v_total.length > 6) {
+                        v_total = v_total.replace(/([0-9]{3}),([0-9]{2}$)/g, ".$1,$2");
+                    }
 
                     $("#" + target).append($("<option></option>").val(obj.installment).html(obj.installment + "X de R$ "+ v_mes + ", TOTAL R$ " + v_total));
                 });
@@ -154,43 +181,66 @@ $(document).ready(function($){
                 var order_id = $('#PARCELOW_COD_PED').val();
                 var acc = $('#PARCELOW_ACC').val();
                 var apihost = $('#PARCELOW_API_HOST').val();
+
+                var vq1 = false
+                if($("input[name='quest_1']").is(':checked')){
+                    vq1 = true;
+                }
     
-                var q1 = $("input[name='quest_1']:checked").val()
-                q1 = q1.split(';');
-    
-                var q2 = $("input[name='quest_2']:checked").val()
-                q2 = q2.split(';');
-    
-                jQuery.ajax({
-                    url: script_ajax.ajax_url,
-                    type: "POST",
-                    dataType: "JSON",
-                    data: {
-                        action: 'wcppa_carrega_ajax',
-                        acao: 'RESPONSEQUESTION',
-                        order_id: order_id,
-                        acc: acc,
-                        apihost: apihost,
-                        p1: q1[0],
-                        r1: q1[1],
-                        p2: q2[0],
-                        r2: q2[1]
-                    },
-                    success: function (data) {
-                        $(target).html('');
-                        console.log(data.status);
-                        if(parseInt(data.status) == 1){
-                            $('#boxQuestions').html('&nbsp;');
-                            //wcppa_showFormCard('#boxCartao');
-                            wcppa_showMeiosPagto('#boxMeioPagto');
-                        } else{
-                            console.log('Identidade não confirmada');
+                var vq2 = false
+                if($("input[name='quest_2']").is(':checked')){
+                    vq2 = true;
+                }
+
+                if(vq1 == false){
+                    $(target).html('<br><br><div class="alert alert-danger"><i class="bi bi-x-circle"></i> Marque 1 das responstas da pergunta 1.</div><br><br>');
+                } else if(vq2 == false){
+                    $(target).html('<br><br><div class="alert alert-danger"><i class="bi bi-x-circle"></i> Marque 1 das responstas da pergunta 2.</div><br><br>');
+                } else{
+                    var q1 = $("input[name='quest_1']:checked").val()
+                    q1 = q1.split(';');
+        
+                    var q2 = $("input[name='quest_2']:checked").val()
+                    q2 = q2.split(';');
+
+                    jQuery.ajax({
+                        url: script_ajax.ajax_url,
+                        type: "POST",
+                        dataType: "JSON",
+                        data: {
+                            action: 'wcppa_carrega_ajax',
+                            acao: 'RESPONSEQUESTION',
+                            order_id: order_id,
+                            acc: acc,
+                            apihost: apihost,
+                            p1: q1[0],
+                            r1: q1[1],
+                            p2: q2[0],
+                            r2: q2[1]
+                        },
+                        success: function (data) {
+                            console.log('RESPOSTA QUESTION: ' + data);
+                            $(target).html('');
+                            console.log(data.status);
+                            if(parseInt(data.status) == 1){
+                                $('#boxQuestions').html('&nbsp;');
+                                //wcppa_showFormCard('#boxCartao');
+                                wcppa_showMeiosPagto('#boxMeioPagto');
+                            } else{
+                                //console.log('Identidade não confirmada');
+                                $(target).html('<br><br><div class="alert alert-danger"><i class="bi bi-x-circle"></i> Identidade não confirmada.</div><br><br>');
+                                setTimeout(function () {
+                                    window.location.href = PARCELOW_URL_ATUAL + '/checkout';
+                                },2000);
+                            }
+                        },
+                        beforeSend: function () {
+                            $(target).html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
                         }
-                    },
-                    beforeSend: function () {
-                        $(target).html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
-                    }
-                });
+                    });
+                }
+    
+
             }
     
             function wcppa_pagarComPix(target)
@@ -202,6 +252,17 @@ $(document).ready(function($){
                 var order_id_local = $('#PARCELOW_COD_PED_LOCAL').val();
                 var url_atual = $('#PARCELOW_URL_ATUAL').val();
                 var order_key = $('#WC_PARCELOW_ORDER_KEY').val();
+                var total = $('#WC_PARCELOW_TOTAL').val();
+                var total_ = localStorage.getItem('TOTAL_PED_GERAL');
+                
+                total_ = total_ + '';
+                total_ = parseInt(total_.replace(/[\D]+/g,''));
+                total_ = total_ + '';
+                total_ = total_.replace(/([0-9]{2})$/g, ",$1");
+
+                if (total_.length > 6) {
+                    total_ = total_.replace(/([0-9]{3}),([0-9]{2}$)/g, ".$1,$2");
+                }
                 
                 $(target).css('display','block');
                 wcppa_hideMeiosPagto('#boxMeioPagto');
@@ -223,25 +284,29 @@ $(document).ready(function($){
                     },
                     success: function (qrc) {
 
+                        var pageURL = $(location).attr("href");
+                        pageURL = pageURL.replaceAll("?show_parcelow", "");
+                        //window.location.href = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
+                        pageURL = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
+
                         $(target).html('');
                         var link = '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' + qrc.link + '" title="QR CODE PARCELOW" /></div><br><br>';
                         link += '<br><br><p class="text-center"><img onclick="navigator.clipboard.writeText(\'' + qrc.link + '\');$(\'#box_parcelow_alert\').css(\'display\',\'block\');" style="cursor:pointer;" src="' + base + 'assets/imgs/copiaecola.png"></p>';
                         link += '<br><div id="box_parcelow_alert" style="display:none;"><div class="alert alert-success text-center" role="alert">Copiado com sucesso.</div></div>';
 
                         link += '<br><br>';
+                        link += '<p style="text-align: center;"><span style="font-size: 2em;letter-spacing: -2px;color:#e07128;"><strong>R$ ' + total_ + '</stron></span><br>TOTAL A PAGAR</p>';
                         link += '<div id="timer" style="text-align: center; font-size: 2em;font-weight: bold;"></div>';
                         link += '<p style="text-align: center;">Tempo restante para fechar a tela.</p>';
+                        link += '<p style="text-align: center;"><a href="'+pageURL+'">Clique aqui se já pagou.</a></p>';
                         $(target).html(link);
 
                         
 
     
-                        var pageURL = $(location).attr("href");
-                        pageURL = pageURL.replaceAll("?show_parcelow", "");
-                        //window.location.href = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
-                        pageURL = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
+
                         display = $('#timer');
-                        wcppa_startTimer(60, display, pageURL);
+                        wcppa_startTimer(360, display, pageURL);
     
 
                     },
