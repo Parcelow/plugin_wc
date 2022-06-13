@@ -5,7 +5,7 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 1.9
+ * Version: 2.2
  * Requires at least: 5.9
  * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
@@ -15,6 +15,7 @@
  *
  */
 
+ 
 /*
 Parcelow is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -269,14 +270,22 @@ add_action( 'plugins_loaded', 'wcppa_woocommerce_gateway_parcelow_init' );
 
 function wcppa_carrega_scripts()
 {
+    
+    wp_enqueue_style('fontawesome', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/fontawesome.css');
+
+    wp_enqueue_style('css', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/estilo.css');
 
     wp_enqueue_style('bootstrap', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap.min.css');
 
     wp_enqueue_style('bootstrap_icones', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/css/bootstrap-icons.min.css');
 
     wp_enqueue_script('bootstrap.bundle', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
+
+    
     
     wp_enqueue_script('scriptajax', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
+    wp_enqueue_script('jquery.mask', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/jquery.mask.min.js');
+
 
     wp_localize_script(
         'scriptajax',
@@ -483,6 +492,9 @@ function wcppa_carrega_ajax()
     } else if(sanitize_text_field($_POST["acao"]) == 'WC_PARCELOW_TOTAL'){
         
         $moeda = get_option('woocommerce_currency');
+        /*if($moeda != 'BRL' || $moeda != 'USD'){
+            $moeda = 'USD';
+        }*/
 
         $order_id = sanitize_text_field($_POST["order_id"]);
         $access_token = sanitize_text_field($_POST["acc"]);
@@ -493,34 +505,7 @@ function wcppa_carrega_ajax()
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
 
         $dolar = 0;
-        if($moeda == 'BRL'){
-            $payload = array(
-                'method' => 'GET',
-                'headers' => array(
-                    'Authorization' => $access_token,
-                    'Content-Type' => "application/x-www-form-urlencoded",
-                        'Accept' => "application/json"
-                    ),
-                'timeout' => 90
-            );
-            $urlapi = $apihost . "/api/simulate?amount=" . $total;
-    
-            $response = wp_remote_get($urlapi , $payload );
-            if (is_wp_error($response)) {
-                throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
-            }
         
-            if (empty($response['body'])) {
-                throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
-            }
-    
-            $o = json_decode( wp_remote_retrieve_body( $response ) );
-            $dolar = $o->data->dolar;
-        }
-
-
-
-
         $payload2 = array(
             'method' => 'GET',
             'headers' => array(
@@ -530,14 +515,8 @@ function wcppa_carrega_ajax()
                 ),
             'timeout' => 90
         );
-
-        if($dolar > 0 && $moeda == 'BRL'){
-            $total = $total / $dolar;
-        }
-
-        $urlapi2 = $apihost . "/api/simulate?amount=" . $total;
-        
-
+        $urlapi2 = $apihost . "/api/simulate?amount=" . $total . "&currency=" . $moeda;
+    
         $response2 = wp_remote_get($urlapi2 , $payload2 );
         if (is_wp_error($response2)) {
             throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
@@ -561,7 +540,97 @@ function wcppa_carrega_ajax()
         ];
         echo wp_send_json($retorno);
 
-    } else if(sanitize_text_field($_POST["acao"]) == 'SHOWQUETIONS'){ //MOSTRA AS PERGUNTAS
+    } else if(sanitize_text_field($_POST["acao"]) == 'WC_PARCELOW_SIMULATE_PARCELAS_DOLAR'){
+        
+        $moeda = get_option('woocommerce_currency');
+        /*if($moeda != 'BRL' || $moeda != 'USD'){
+            $moeda = 'USD';
+        }*/
+
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
+        $total = sanitize_text_field($_POST["total"]);
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $dolar = 0;
+        
+        $payload2 = array(
+            'method' => 'GET',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                    'Accept' => "application/json"
+                ),
+            'timeout' => 90
+        );
+        $urlapi2 = $apihost . "/api/simulate?amount=" . $total . "&currency=" . $moeda;
+    
+        $response2 = wp_remote_get($urlapi2 , $payload2 );
+        if (is_wp_error($response2)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response2['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = json_decode( wp_remote_retrieve_body( $response2 ) );
+        echo wp_send_json($json);
+
+    } else if(sanitize_text_field($_POST["acao"]) == 'WC_PARCELOW_BUSCA_CEP'){
+        
+        $moeda = get_option('woocommerce_currency');
+        if($moeda != 'BRL' || $moeda != 'USD'){
+            $moeda = 'USD';
+        }
+
+        $cep = sanitize_text_field($_POST["cep"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $dolar = 0;
+        
+        $payload2 = array(
+            'method' => 'POST',
+            'headers' => array(
+                'Content-Type' => "application/x-www-form-urlencoded",
+                'Accept' => "application/json"
+            ),
+            'timeout' => 90
+        );
+        $urlapi2 = "https://agedi3.com/cep/index.php?acao=CEP&cep=".$cep;
+    
+        $response2 = wp_remote_post($urlapi2 , $payload2 );
+        if (is_wp_error($response2)) {
+            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.','wc-gateway-nequi'));
+        }
+    
+        if (empty($response2['body'])) {
+            throw new Exception(__('A resposta de Parcelow.com não obteve nenhum dado.', 'wc-gateway-nequi'));
+        }
+
+        $json = json_decode( wp_remote_retrieve_body( $response2 ), true );
+        foreach ($json as $o){
+            $arr = [
+                'bairro' => $o["bairro"],
+                'cep' => $o["cep"],
+                'cidade' => $o["cidade"],
+                'logradouro' => $o["logradouro"],
+                'uf' => $o["uf"]
+            ];
+        }
+        echo wp_send_json($arr);
+
+    }
+
+    
+    else if(sanitize_text_field($_POST["acao"]) == 'SHOWQUETIONS'){ //MOSTRA AS PERGUNTAS
         
         $order_id = sanitize_text_field($_POST["order_id"]);
         $access_token = sanitize_text_field($_POST["acc"]);
@@ -591,7 +660,8 @@ function wcppa_carrega_ajax()
         }
 
         $json = json_decode( wp_remote_retrieve_body( $response ) );
-        $html = '<h4>Confirmação dados pessoais</h4><br>';
+        $html = '<div class="alert alert-warning"><h5>Importante</h5><p>Obrigado por confiar na ParcelowSandbox, Aqui nós prezamos pela transparência, e por isso, informamos que nossa cotação do Dólar é atualizada a cada 15 minutos. Siga até o último passo para conferir o valor atualizado antes de fazer o pagamento.</p></div>';
+        $html .= '<h4>Confirmação dados pessoais</h4><br>';
         $id = 0;
         $ant = '';
         $quest = 0;
@@ -627,12 +697,17 @@ function wcppa_carrega_ajax()
     } else if(sanitize_text_field($_POST["acao"]) == 'INICIAFRONTPARCELOW'){
         global $wp;
         $urlstual = home_url( $wp->request );
-
+        $order_total_emdolar = 0;
+        $json_parc_dolas = "";
         if (isset(WC()->session)) {
             $apihost = sanitize_text_field(WC()->session->get( 'WC_PARCELOW_API_HOST' ));
             $bearer = sanitize_text_field(WC()->session->get( 'WC_COD_AUT_PARCELOW' ));
             $order_id_parcelow = sanitize_text_field(WC()->session->get( 'WC_COD_PEDIDO_NA_PARCELOW' ));
             $order_id = sanitize_text_field(WC()->session->get( 'WC_COD_PEDIDO_LOCAL' ));
+            $order_total_emdolar = sanitize_text_field(WC()->session->get( 'WC_TOTAL_EM_DOLAR_PARCELOW' ));
+            $json_parc_dolas = sanitize_text_field(WC()->session->get( 'WC_JSON_PARCELAS_PARCELOW' ));
+            
+            
             $order_key = "";
         } else{
             $apihost = "";
@@ -665,189 +740,279 @@ function wcppa_carrega_ajax()
         $descrip_method .= '<input type="hidden" name="PARCELOW_API_HOST" id="PARCELOW_API_HOST" value="'.$apihost.'">';
         $descrip_method .= '<input type="hidden" name="WC_PARCELOW_TOTAL" id="WC_PARCELOW_TOTAL" value="'.$total.'">';
         $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_KEY" id="WC_PARCELOW_ORDER_KEY" value="'.$order_key.'">';
+        $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_TOTAL_EMDOLAR" id="WC_PARCELOW_ORDER_TOTAL_EMDOLAR" value="'.$order_total_emdolar.'">';
+        $descrip_method .= '<input type="hidden" name="WC_PARCELOW_JSON_PARCELAS" id="WC_PARCELOW_JSON_PARCELAS" value="'.$json_parc_dolas.'">';
 
-        $descrip_method .= '<!-- Modal -->
-        <div class="modal fade" id="mod_gatway_parcelow" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="mod_gatway_parcelow" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header" style="border-bottom: none;">
-                <h5 class="modal-title" id="mod_gatway_parcelow"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        $namecli = get_user_meta( get_current_user_id(), 'billing_first_name', true ) .' ' . get_user_meta( get_current_user_id(), 'billing_last_name', true );
+        $ufcli = get_user_meta( get_current_user_id(), 'billing_state', true );
+        $logra = get_user_meta( get_current_user_id(), 'billing_address_1', true );
+        $numruacli = "";
+        if(strpos($logra,",") !== false){
+            $logra = explode(",",$logra);
+            $numruacli = trim($logra[1]);
+            $logra = $logra[0];
+            
+        }
+        $descrip_method .= '
+        <div class="modal fade" id="mod_gatway_parcelow" data-bs-backdrop="static" data-bs-keyboard="false" modal-xl tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+        <div class="modal-header" style="border: none;">
+            <h5 class="modal-title" id="exampleModalLabel"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <div style="width:100%;height:auto;">
+
+                <div id="wcppa_boxValidaTotal" style="display:none">
+                    <div class="alert alert-warning"><h5>Importante</h5>
+                    <p>
+                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $3,000,00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
+                    <strong>PESSOA FÍSICA</strong><br>
+                    RG ou CNH<br>
+                    Comprovante de Endereço<br>
+                    Declaração de Imposto de Renda<br><br>
+                    <strong>PESSOA JURÍDICA</strong><br>
+                    Contrato Social<br>
+                    Cartão do CNPJ<br>
+                    Balanço do último ano<br>
+                    Relação de faturamento dos últimos 12 meses
+                    </p>
+                    <p>
+                    <button class="btn btn-danger" id="wcppa_btn_nconcordo">Não concordo</button>
+                    <button class="btn btn-success" id="wcppa_btn_concordo">Concordo</button>
+                    <p>
+                    </div>
                 </div>
-                <div class="modal-body">
-                <div style="width:100%;height:auto;">
-        
-                    <div id="boxMsgOrder"></div>
-        
-                    <div id="boxQuestions"></div>
-        
-                    <div id="boxMeioPagto" style="display:none">
 
-                        <div class="row">
+                <div id="wcppa_boxValidaTotal2" style="display:none">
+                    <div class="alert alert-warning"><h5>Importante</h5>
+                    <p>
+                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $3,000,00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
+                    <strong>PESSOA FÍSICA</strong><br>
+                    RG ou CNH<br>
+                    Comprovante de Endereço<br>
+                    Declaração de Imposto de Renda<br><br>
+                    <strong>PESSOA JURÍDICA</strong><br>
+                    Contrato Social<br>
+                    Cartão do CNPJ<br>
+                    Balanço do último ano<br>
+                    Relação de faturamento dos últimos 12 meses
+                    </p>
+                    <p>
+                    <button class="btn btn-danger" id="wcppa_btn_nconcordo2">Não concordo</button>
+                    <button class="btn btn-success" id="wcppa_btn_concordo2">Concordo</button>
+                    <p>
+                    </div>
+                </div>
 
-                            <div class="col-md-12 text-center">
-                                <h4>Escolha um meio de pagamento</h4><br><br>
-                            </div>
-        
-                            <div class="col-md-6 text-center">
-                                <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
-                            </div>
-        
-                            <div class="col-md-6 text-center">
-                                <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
-                            </div>
+                <div id="boxMsgOrder"></div>
 
+                <div id="boxQuestions"></div>
+
+                <div id="boxMeioPagto" style="display:none">
+
+                    <div class="row">
+
+                        <div class="col-md-12 text-center">
+                            <h4>Escolha um meio de pagamento</h4><br><br>
+                        </div>
+
+                        <div class="col-md-6 text-center">
+                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
+                        </div>
+
+                        <div class="col-md-6 text-center">
+                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
                         </div>
 
                     </div>
-        
-                    <div id="boxPix" style="display:none"></div>
-        
-                    <div id="boxCartao" style="display:none">
-        
-                        <div class="row">
+
+                </div>
+
+                <div id="boxPix" class="w-100" style="display:none"></div>
+
+                <div id="boxCartao" class="w-100" style="display:none">
+
+                    <form onsubmit="return false;" class="w-100">
+                        <div class="row align-items-start">
                         
-                            <div class="col-md-12">
-                                <h3>Digite os dados do cartão</h3>
+                            <div class="col-md-12 mb-3">
+                                <h5>Digite os dados de seu cartão</h5>
+                                <p style="color: #f7ac08;"><i class="fa-solid fa-circle-info"></i> <span style="font-style:italic;">Não é aceito cartão de terceiro. Utilize um cartão de sua propriedade.</span></p>
+                                <input type="hidden" id="card_parcelas">
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="card_name">Nome impresso no cartão <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_name" id="card_name" value="' . get_user_meta( get_current_user_id(), 'billing_first_name', true ) .' ' . get_user_meta( get_current_user_id(), 'billing_last_name', true ) .'">
+
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="card_name" class="form-label">Nome <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control form-control-lg" placeholder="" name="card_name" id="card_name" value="' . $namecli .'" style="width:100%;" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="card_numero">Número do cartão <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_numero" id="card_numero" maxlength="16" value="">
+
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="card_numero" class="form-label">Número <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control form-control-lg nrCard" placeholder="" name="card_numero" id="card_numero" maxlength="16" value=""  style="width:100%;" required>
+                                    <div id="boxMsgCard"></div>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="card_cvv">Código de Segurança - CVV <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value="">
+
+                            <div class="col-md-2">
+                                <div class="mb-3">
+                                    <label for="card_cvv" class="form-label">CVV <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control form-control-lg cvv" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value=""  style="width:100%;" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="card_data_valid">Data de expiração <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="MM/YYYY" name="card_data_valid" id="card_data_valid" value="">
+
+                            <div class="col-md-2">
+                                <div class="mb-3">
+                                    <label for="card_data_valid" class="form-label">Expira em <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control form-control-lg dataexp" placeholder="MM/YYYY" maxlength="7" name="card_data_valid" id="card_data_valid" value="" required>
+                                    <div id="boxMsgDataExp"></div>
                                 </div>
                             </div>
-                            
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="card_parcelas">Selecione o número de parcelas <span style="color:red;">*</span></lablel>
-                                    <select class="form-control" name="card_parcelas" id="card_parcelas">
-        
-                                    </select>
+
+                            <div class="col-sm-12 mt-5 mb-3">
+                                <h5>Escolha em quantas vezes quer pagar</h5>
+                            </div>
+
+                            <div class="col-sm-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="bxParcParcelow1"></div>
+                                    </div>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <hr>
-                            </div>
-        
-                            <div class="col-md-12">
-                                <h6>Endereço de cobrança</h6>
-                                <br>
-                            </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_cep">CEP / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_cep" id="card_cep" value="' . get_user_meta( get_current_user_id(), 'billing_postcode', true ) . '">
+
+                            <div class="col-sm-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="bxParcParcelow2"></div>
+                                    </div>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street">Endereço <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . get_user_meta( get_current_user_id(), 'billing_address_1', true ) . '">
+
+                            <div class="col-sm-12 mt-5 mb-3">
+                                <h5>Digite o endereço de cobrança do seu cartão</h5>
+                            </div>
+
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_cep" class="form-label">CEP / ZIP <span style="color:red;">*</span> <span id="boxCepCard"></span></label>
+                                    <input type="text" class="form-control cep" placeholder="" name="card_cep" id="card_cep" value="' . get_user_meta( get_current_user_id(), 'billing_postcode', true ) . '" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street_number">Número <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_street_number" id="card_street_number" value="' . get_user_meta( get_current_user_id(), 'address_number', true ) . '">
+
+                            <div class="col-md-9">
+                                <div class="mb-3">
+                                    <label for="card_street" class="form-label">Endereço <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . $logra . '" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street_supplement">Complemento </lablel>
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_street_number" class="form-label">Número <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_number" id="card_street_number" value="' . $numruacli . '" required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_street_supplement" class="form-label">Complemento </label>
                                     <input type="text" class="form-control" placeholder="" name="card_street_supplement" id="card_street_supplement">
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street_bairro">Bairro <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_street_bairro" id="card_street_bairro" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_street_bairro" class="form-label">Bairro <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_bairro" id="card_street_bairro" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street_city">Cidade <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_street_city" id="card_street_city" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '">
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_street_city" class="form-label">Cidade <span style="color:red;">*</span></label>
+                                    <input type="text" class="form-control" placeholder="" name="card_street_city" id="card_street_city" value="' . get_user_meta( get_current_user_id(), 'billing_city', true ) . '" required>
                                 </div>
                             </div>
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <lablel for="card_street_state">Estado <span style="color:red;">*</span></lablel>
-                                    <input type="text" class="form-control" placeholder="" name="card_street_state" id="card_street_state" value="' . get_user_meta( get_current_user_id(), 'billing_state', true ) . '">
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="card_street_state" class="form-label">Estado <span style="color:red;">*</span></label>
+                                    <select class="form-control form-select" id="card_street_state" name="card_street_state">
+                                        <option value="AC" '.($ufcli == 'AC' ? 'selected' : '').'>AC</option>
+                                        <option value="AL" '.($ufcli == 'AL' ? 'selected' : '').'>AL</option>
+                                        <option value="AM" '.($ufcli == 'AM' ? 'selected' : '').'>AM</option>
+                                        <option value="AP" '.($ufcli == 'AP' ? 'selected' : '').'>AP</option>
+                                        <option value="BA" '.($ufcli == 'BA' ? 'selected' : '').'>BA</option>
+                                        <option value="CE" '.($ufcli == 'CE' ? 'selected' : '').'>CE</option>
+                                        <option value="DF" '.($ufcli == 'DF' ? 'selected' : '').'>DF</option>
+                                        <option value="ES" '.($ufcli == 'ES' ? 'selected' : '').'>ES</option>
+                                        <option value="GO" '.($ufcli == 'GO' ? 'selected' : '').'>GO</option>
+                                        <option value="MA" '.($ufcli == 'MA' ? 'selected' : '').'>MA</option>
+                                        <option value="MG" '.($ufcli == 'MG' ? 'selected' : '').'>MG</option>
+                                        <option value="MS" '.($ufcli == 'MS' ? 'selected' : '').'>MS</option>
+                                        <option value="MT" '.($ufcli == 'MT' ? 'selected' : '').'>MT</option>
+                                        <option value="PA" '.($ufcli == 'PA' ? 'selected' : '').'>PA</option>
+                                        <option value="PB" '.($ufcli == 'PB' ? 'selected' : '').'>PB</option>
+                                        <option value="PE" '.($ufcli == 'PE' ? 'selected' : '').'>PE</option>
+                                        <option value="PI" '.($ufcli == 'PI' ? 'selected' : '').'>PI</option>
+                                        <option value="PR" '.($ufcli == 'PR' ? 'selected' : '').'>PR</option>
+                                        <option value="RJ" '.($ufcli == 'RJ' ? 'selected' : '').'>RJ</option>
+                                        <option value="RN" '.($ufcli == 'RN' ? 'selected' : '').'>RN</option>
+                                        <option value="RO" '.($ufcli == 'RO' ? 'selected' : '').'>RO</option>
+                                        <option value="RR" '.($ufcli == 'RR' ? 'selected' : '').'>RR</option>
+                                        <option value="RS" '.($ufcli == 'RS' ? 'selected' : '').'>RS</option>
+                                        <option value="SC" '.($ufcli == 'SC' ? 'selected' : '').'>SC</option>
+                                        <option value="SE" '.($ufcli == 'SE' ? 'selected' : '').'>SE</option>
+                                        <option value="SP" '.($ufcli == 'SP' ? 'selected' : '').'>SP</option>
+                                        <option value="TO" '.($ufcli == 'TO' ? 'selected' : '').'>TO</option>
+                                    </select>
                                 </div>
                             </div>
-        
+
                             <div class="col-md-12">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo">
+                                    <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo" required>
                                     <label class="form-check-label" for="li_termo">
                                         <span>Li e aceito os <a href="https://parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
                                         <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma Parcelow.</span>
-        
+
                                     </label>
                                 </div>
-        
+
                             </div>
-        
-                            
-        
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <a class="btn btn-warning" id="btn_finaliza_com_cartao">Finalizar pagamento</a>
+
+                            <div class="col-md-12 mt-5">
+                                <div class="mb-3">
+                                    <a class="btn btn-warning" type="submit" id="btn_finaliza_com_cartao">Finalizar pagamento</a>
                                 </div>
                             </div>
-        
 
-        
+
+
                         </div>
-        
-        
-                    </div>
+                    </form>
 
-                    <br style="clear:both;">
-
-                    <div id="boxMsgFinalizaCard"></div>
-
-                    <br style="clear:both;">
 
                 </div>
-            </div>
 
+                <br style="clear:both;">
+
+                <div id="boxMsgFinalizaCard"></div>
+
+                <br style="clear:both;">
 
             </div>
-            </div>
+        </div>
+
+        </div>
+        </div>
         </div>';
-
-        
 
         $urlcheck = wc_get_checkout_url();
         $uri_atual = wc_get_page_permalink(get_the_ID());
@@ -1054,6 +1219,13 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     'description' => 'URL of tests',
                 ),
 
+                'partner_reference' => array(
+                    'title'       => 'Partner Reference',
+                    'type'        => 'text',
+                    'default'     => '',
+                    'description' => 'Reference of system or site. Example: SYSTEM-CENTRAL',
+                ),
+
                 'client_id_sandbox' => array(
                     'title'       => 'Client id sandbox',
                     'type'        => 'text',
@@ -1205,6 +1377,12 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
 			global $wp;
 			$token = $this->oauthAccesssToken();
+
+            $partner_reference = "";
+            if ( !is_admin() ) {
+                $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+                $partner_reference = $obj["partner_reference"];
+            }
 			 
             // we need it to get any order detailes
             $order = wc_get_order( $order_id );
@@ -1229,8 +1407,14 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 				'client[address_state]' => sanitize_text_field($_POST['billing_state']),
                 'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
 				'shipping[amount]' => $order->get_total_shipping() * 100,
-				'reference' => $REFERENCE
+				'reference' => $REFERENCE,
+                'partner_reference' => $partner_reference
             );
+
+
+            if ( !is_admin() ) {
+                WC()->session->set('WCPPA_NAME', sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']));
+            }
 
 			$i=0; 
          
@@ -1283,6 +1467,7 @@ function wcppa_woocommerce_gateway_parcelow_init() {
 
             if($existOrder == false)
             {
+
                 /*  Your API interaction could be built with wp_remote_post() */
                 $payload = array(
                     'method' => 'POST',
@@ -1321,6 +1506,8 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     
                     $order->update_status('wc-pending', __( 'Awaiting  payment', 'woocommerce' ));
 
+                    
+
                     $data = $body['data'];
                     $total = (string) number_format($body['total'],2,",",".");
                     $total = str_replace(",","",$total);
@@ -1331,6 +1518,9 @@ function wcppa_woocommerce_gateway_parcelow_init() {
                     WC()->session->set('WC_COD_PEDIDO_LOCAL', $order_id);
                     WC()->session->set('WC_COD_AUT_PARCELOW', $bearer);
                     WC()->session->set('WC_PARCELOW_API_HOST', $host);
+
+                    //GRAVA TOTAL DO DOLAR NA SESSAO
+                    $this->wcppa_getInfoOrder($data['order_id'], $token);
 
                     //echo $data['order_id'];
                     // $data['order_id'];
@@ -1358,6 +1548,45 @@ function wcppa_woocommerce_gateway_parcelow_init() {
             }
 
 	 	}
+
+
+        public function wcppa_getInfoOrder($order_id, $token)
+        {
+             $payload = array(
+                 'method' => 'GET',
+                 'headers' => array(
+                     'Authorization' => "Bearer ". $token,
+                     'Content-Type' => "application/x-www-form-urlencoded",
+                         'Accept' => "application/json"
+                     ),
+                 'timeout' => 90
+             );
+             $urlapi = $this->host . '/api/order/' . $order_id;
+
+             $response = wp_remote_get($urlapi , $payload );
+             if (is_wp_error($response)) {
+                 throw new Exception(__('There is issue for connectin payment gateway. Sorry for the inconvenience.',
+                     'wc-gateway-nequi'));
+             }
+         
+             if (empty($response['body'])) {
+                 throw new Exception(__('Parcelow.com\'s Response was not get any data.', 'wc-gateway-nequi'));
+             }
+
+             $result = wp_remote_retrieve_body( $response );
+             $json = json_decode( $result );
+             $total_emdolar = 0;
+             if(isset($json->data->total_usd)){
+                $total_emdolar = $json->data->total_usd;
+                $v1 = substr($total_emdolar, 0, strlen($total_emdolar) - 2);
+                $v2 = substr($total_emdolar, strlen($total_emdolar) - 2, 2);
+                $total_emdolar = $v1.".".$v2;
+             }
+             WC()->session->set('WC_TOTAL_EM_DOLAR_PARCELOW', $total_emdolar);
+
+             return true;
+
+        }
 
         public function wcppa_geraCODRandNumber($n)
         {
@@ -1581,7 +1810,7 @@ function wcppa_setcookie_control()
 
     
 }
-
+/*
 add_action( 'init', 'wcppa_setcookie_control_dolar' );
 function wcppa_setcookie_control_dolar()
 {
@@ -1637,7 +1866,7 @@ function wcppa_setcookie_control_dolar()
                 ),
             'timeout' => 90
         );
-        $urlapi = $host_api . "/api/simulate?amount=100.00";
+        $urlapi = $host_api . "/api/simulate?currency=USD&amount=100.00";
         $response = wp_remote_get($urlapi , $payload );
         $o = json_decode( wp_remote_retrieve_body( $response ), true );
         $dolar = 0;
@@ -1649,6 +1878,7 @@ function wcppa_setcookie_control_dolar()
 
     
 }
+*/
 
 add_action( 'wp_head', 'wcppa_getcookie_control' );
 function wcppa_getcookie_control() {
@@ -1656,104 +1886,300 @@ function wcppa_getcookie_control() {
     //echo "<script type='text/javascript'>alert('$alert')</script>";
 }
 
+function cfwc_create_custom_field()
+{
+    $args1 = array(
+        'id' => 'custom_text_field_title_parcela',
+        'label' => __( 'Quantidade máxima parcela(Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'Quantidade máxima a ser dividido em Real Brasileiro.', 'ctwc' ),
+    );
+
+    $args2 = array(
+        'id' => 'custom_text_field_title_parcela_valor',
+        'label' => __( 'Parcela máxima valor(Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'Valor máximo da parcela em Real Brasileiro.', 'ctwc' ),
+    );
+
+    $args3 = array(
+            'id' => 'custom_text_field_title_parcela_time',
+            'label' => __( 'Update time(Parcelow)', 'cfwc' ),
+            'class' => 'cfwc-custom-field',
+            'custom_attributes' => array('readonly' => 'readonly'),
+            'type' => 'text',
+            'desc_tip' => true,
+            'description' => __( 'Data hora da atualização da descrição da parcela', 'ctwc' ),
+    );
+
+    $args4 = array(
+        'id' => 'custom_text_field_title_parcela_dolar',
+        'label' => __( 'Dollar(Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'Dollar', 'ctwc' ),
+    );
+
+    $args5 = array(
+        'id' => 'custom_text_field_title_parcela_moeda',
+        'label' => __( 'Moeda(Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'Moeda atual', 'ctwc' ),
+    );
+    
+    $args6 = array(
+        'id' => 'custom_text_field_title_parcela_valor_produto',
+        'label' => __( 'Valor produto(Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'Valor produto', 'ctwc' ),
+    );
+
+    $args7 = array(
+        'id' => 'custom_text_field_title_ted_valor_produto',
+        'label' => __( 'TED (Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'TED', 'ctwc' ),
+    );
+
+    $args8 = array(
+        'id' => 'custom_text_field_title_pix_valor_produto',
+        'label' => __( 'PIX (Parcelow)', 'cfwc' ),
+        'class' => 'cfwc-custom-field',
+        'custom_attributes' => array('readonly' => 'readonly'),
+        'type' => 'text',
+        'desc_tip' => true,
+        'description' => __( 'PIX', 'ctwc' ),
+    );
+
+    woocommerce_wp_text_input( $args1 );
+    woocommerce_wp_text_input( $args2 );
+    woocommerce_wp_text_input( $args3 );
+    woocommerce_wp_text_input( $args4 );
+    woocommerce_wp_text_input( $args5 );
+    woocommerce_wp_text_input( $args6 );
+    woocommerce_wp_text_input( $args7 );
+    woocommerce_wp_text_input( $args8 );
+}
+add_action( 'woocommerce_product_options_general_product_data', 'cfwc_create_custom_field' );
+
+
+
+function cfwc_save_custom_field( $post_id ) {
+    $product = wc_get_product( $post_id );
+    //$parcela = isset( $_POST['custom_text_field_title_parcela'] ) ? $_POST['custom_text_field_title_parcela'] : '';
+    $product->update_meta_data( 'custom_text_field_title_parcela_valor', sanitize_text_field( '0.00' ) );
+    $product->update_meta_data( 'custom_text_field_title_parcela', sanitize_text_field( '0' ) );
+    $product->update_meta_data( 'custom_text_field_title_parcela_time', sanitize_text_field( date('Y-m-d H:i:s') ) );
+    $product->update_meta_data( 'custom_text_field_title_parcela_dolar', sanitize_text_field( '0.00' ) );
+    $product->update_meta_data( 'custom_text_field_title_parcela_moeda', sanitize_text_field( '' ) );
+    $product->update_meta_data( 'custom_text_field_title_parcela_valor_produto', sanitize_text_field( '0.00' ) );
+    $product->update_meta_data( 'custom_text_field_title_ted_valor_produto', sanitize_text_field( '0.00' ) );
+    $product->update_meta_data( 'custom_text_field_title_pix_valor_produto', sanitize_text_field( '0.00' ) );
+    
+    $product->save();
+
+}
+add_action( 'woocommerce_process_product_meta', 'cfwc_save_custom_field' );
+
 
 
 /** Add Valor Aproximado ao lado de cada produto */ 
 add_filter( 'woocommerce_get_price_html', 'add_approximately_price', 10, 2 );
 function add_approximately_price( $price_html, $product)
 {
-    $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
-    $secret_key_producao = $obj["secret_key_producao"];
-    $client_id_producao = $obj["client_id_producao"];
-    $parc_val_aprox = $obj["parc_val_aprox"];
-    $host_producao = $obj["host_producao"];
-    $host_sandbox = $obj["host_sandbox"];
+    //setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese'); 
+    //date_default_timezone_set('America/Sao_Paulo');
 
-    $ambiente = $obj["ambiente"];
-    $client_id_sandbox = $obj["client_id_sandbox"];
-    $secret_key_sandbox = $obj["secret_key_sandbox"];
+    $moeda = get_option('woocommerce_currency');
+    $custom_text_field_title_parcela = 0;
+    $custom_text_field_title_parcela_valor = 0;
+    $custom_text_field_title_parcela_time = 0;
+    $custom_text_field_title_parcela_dolar = 0;
+    $custom_text_field_title_parcela_moeda = '';
+    $dolar = 0;
+    $moeda2 = '';
+    $em12x = 0;
+    $in = 0;
+    $prodvant = 0;
+    $tedant = 0;
+    $pixant = 0;
+    $hmllegprice_pix = "";
+    $hmllegprice_ted = "";
 
-    if($ambiente == 0){ //sandbox
-        $client_id = $client_id_sandbox;
-        $secret_key = $secret_key_sandbox; 
-        $host_api = $host_sandbox;
-    } else{
-        $client_id = $client_id_producao;
-        $secret_key = $secret_key_producao;
-        $host_api = $host_producao;
+    foreach ($product->get_meta_data() as $object) {
+        $object_array = array_values((array)$object);
+        foreach ($object_array as $object_item) {
+          if ('custom_text_field_title_parcela_valor' == $object_item['key']) {
+            $custom_text_field_title_parcela_valor = $object_item['value'];
+            $em12x = $custom_text_field_title_parcela_valor;
+            //print_r($object_item['value']);
+            //echo "<br><br>";
+            //break;
+          }
+          if ('custom_text_field_title_parcela_time' == $object_item['key']) {
+            //echo strtotime('now'). " " . strtotime($object_item['value']) . "<br><br>"; 
+            //echo date('Y-m-d H:i:s') . " - " . $object_item['value'] . "<br>";
+            $strtotime = strtotime(date('Y-m-d H:i:s')) - strtotime($object_item['value']);
+            $time = explode(":", date('H:i:s',$strtotime));
+            $custom_text_field_title_parcela_time = 60 * $time[1] + $time[2];
+
+            //echo "Seg: " . $custom_text_field_title_parcela_time . "<br><br>";
+            //echo $object_item['value'] . "<br>";
+            //
+            //echo round(date('i',$strtotime));
+            //echo "<br><br>";
+            //break;
+          }
+          if ('custom_text_field_title_parcela' == $object_item['key']) {
+            $custom_text_field_title_parcela = $object_item['value'];
+            $in = $custom_text_field_title_parcela;
+            //echo $object_item['value'] . "<br>";
+            //
+            //echo round(date('i',$strtotime));
+            //echo "<br><br>";
+            //break;
+          }
+          if ('custom_text_field_title_parcela_dolar' == $object_item['key']) {
+            $custom_text_field_title_parcela_dolar = $object_item['value'];
+            $dolar = $custom_text_field_title_parcela_dolar;
+          }
+          if ('custom_text_field_title_parcela_moeda' == $object_item['key']) {
+            $custom_text_field_title_parcela_moeda = $object_item['value'];
+            $moeda2 = $custom_text_field_title_parcela_moeda;
+          }
+          if ('custom_text_field_title_parcela_valor_produto' == $object_item['key']) {
+            $prodvant = $object_item['value'];
+          }
+          if ('custom_text_field_title_ted_valor_produto' == $object_item['key']) {
+            $tedant = $object_item['value'];
+          }
+          if ('custom_text_field_title_pix_valor_produto' == $object_item['key']) {
+            $pixant = $object_item['value'];
+          }
+          
+        }
     }
 
-    if ( !is_admin() )
-    {
-        
-        $count = 0;
+    $update_prods = 0;
+    $unit_price = $product->get_price();
 
-        if($parc_val_aprox == 0)
+    //echo $custom_text_field_title_parcela_time . "<br><br>";
+    //echo "$custom_text_field_title_parcela_time < 600 && $moeda2 == $moeda && $em12x > 0<br>";
+    if($custom_text_field_title_parcela_time < 600 && $moeda2 == $moeda && $em12x > 0 && $prodvant ==  $unit_price){
+        if ( !is_admin() )
         {
-
-            if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
-                $reqJson = array('client_id' => $client_id,
-                'client_secret' => $secret_key,
-                'grant_type' => "client_credentials");
-                $payload = array(
-                'method' => 'POST',
-                'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
-                                'Accept' => "application/json",
-                                'X-Requested-With' => "XMLHttpRequest"
-                        ),
-                'body' =>  $reqJson,
-                'timeout' => 90
-                );
-                $response = wp_remote_post( $host_api . '/oauth/token', $payload );
-                $body = json_decode( wp_remote_retrieve_body( $response ), true );
-    
-    
-                //$access_token = "Bearer ". WC()->session->get('WCPPA_OPT_ACC_KEY');
-                $access_token = "Bearer ". $body['access_token'];
-            } else{
-                $access_token = "Bearer ". $_COOKIE['WCPPA_OPT_ACC_TOK'];
-            }
-
-    
+            //echo "SEMCACHE<br><br>";
             $lang = get_locale();
             
             $leg = "";
 
-            $moeda = get_option('woocommerce_currency');
-            $unit_price = $product->get_price();
-            if( 'USD' ==  $moeda  ){
-                //$aproximamente = $product->get_price() * $dolar;
-                $payload = array(
-                    'method' => 'GET',
-                    'headers' => array(
-                        'Authorization' => $access_token,
-                        'Content-Type' => "application/x-www-form-urlencoded",
-                            'Accept' => "application/json"
-                        ),
-                    'timeout' => 90
-                );
-                $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
-                $response = wp_remote_get($urlapi , $payload );
-                $o = json_decode( wp_remote_retrieve_body( $response ), true );
-                if(isset($o["data"]["creditcard"]["installments"])){
-                    $parcelas = count($o["data"]["creditcard"]["installments"]);
-                    $in = $parcelas - 1;
-                    if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
-                        if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
-                            $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
-                            if($em12x > 0){
-                                $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
-                                if($lang == 'pt_BR'){
-                                    $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
-                                }
-                                $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
-                            }
-                        }
-                    }
+            if($pixant > 0){
+                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($pixant,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                if($lang == 'pt_BR'){
+                    $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($pixant,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                 }
-            } else if( 'BRL' ==  $moeda  ){
-                $dolar = 0;
-                if(!isset($_COOKIE['WCPPA_OPT_DOLAR'])){
+                //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+            }
+
+            if($tedant > 0){
+                $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($tedant,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                if($lang == 'pt_BR'){
+                    $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($tedant,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                }
+                //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+            }
+
+            if($custom_text_field_title_parcela > 0){
+                $leg = "Or ".$custom_text_field_title_parcela." payments of R$ ".number_format($custom_text_field_title_parcela_valor,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                if($lang == 'pt_BR'){
+                    $leg = "Ou ".$custom_text_field_title_parcela."x de R$ ".number_format($custom_text_field_title_parcela_valor,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                }
+                //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+            }  
+        }
+    } else{
+        $update_prods++;
+        $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+        $secret_key_producao = $obj["secret_key_producao"];
+        $client_id_producao = $obj["client_id_producao"];
+        $parc_val_aprox = $obj["parc_val_aprox"];
+        $host_producao = $obj["host_producao"];
+        $host_sandbox = $obj["host_sandbox"];
+    
+        $ambiente = $obj["ambiente"];
+        $client_id_sandbox = $obj["client_id_sandbox"];
+        $secret_key_sandbox = $obj["secret_key_sandbox"];
+    
+        if($ambiente == 0){ //sandbox
+            $client_id = $client_id_sandbox;
+            $secret_key = $secret_key_sandbox; 
+            $host_api = $host_sandbox;
+        } else{
+            $client_id = $client_id_producao;
+            $secret_key = $secret_key_producao;
+            $host_api = $host_producao;
+        }
+    
+    
+    
+        if ( !is_admin() )
+        {
+            
+            $count = 0;
+            $em12x = 0;
+            $in = 0;
+    
+            if($parc_val_aprox == 0)
+            {
+    
+                if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
+                    $reqJson = array('client_id' => $client_id,
+                    'client_secret' => $secret_key,
+                    'grant_type' => "client_credentials");
+                    $payload = array(
+                    'method' => 'POST',
+                    'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
+                                    'Accept' => "application/json",
+                                    'X-Requested-With' => "XMLHttpRequest"
+                            ),
+                    'body' =>  $reqJson,
+                    'timeout' => 90
+                    );
+                    $response = wp_remote_post( $host_api . '/oauth/token', $payload );
+                    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        
+        
+                    //$access_token = "Bearer ". WC()->session->get('WCPPA_OPT_ACC_KEY');
+                    $access_token = "Bearer ". $body['access_token'];
+                } else{
+                    $access_token = "Bearer ". $_COOKIE['WCPPA_OPT_ACC_TOK'];
+                }
+    
+        
+                $lang = get_locale();
+                
+                $leg = "";
+    
+                
+                if( 'USD' ==  $moeda  ){
+                    //$aproximamente = $product->get_price() * $dolar;
                     $payload = array(
                         'method' => 'GET',
                         'headers' => array(
@@ -1763,87 +2189,228 @@ function add_approximately_price( $price_html, $product)
                             ),
                         'timeout' => 90
                     );
-                    $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
+                    $urlapi = $host_api . "/api/simulate?currency=USD&amount=".$unit_price;
                     $response = wp_remote_get($urlapi , $payload );
                     $o = json_decode( wp_remote_retrieve_body( $response ), true );
-                    if(isset($o["data"]["dolar"])){
-                        $dolar = $o["data"]["dolar"];
+                    if(isset($o["data"]["pix"]["amount"])){
+                        if($o["data"]["pix"]["amount"] > 0){
+                            $pixant = $o["data"]["pix"]["amount"];
+                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                            //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                        }
                     }
-                }else{
-                    $dolar = $_COOKIE['WCPPA_OPT_DOLAR'];
-                }
 
-                //echo $dolar;
-                //echo "DOLAR = " . $_COOKIE['WCPPA_OPT_DOLAR'];
-                
+                    if(isset($o["data"]["ted"]["amount"])){
+                        if($o["data"]["ted"]["amount"] > 0){
+                            $tedant = $o["data"]["ted"]["amount"];
+                            $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                            //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                        }
+                    }
 
-                //RECALCULA
-                $payload = array(
-                    'method' => 'GET',
-                    'headers' => array(
-                        'Authorization' => $access_token,
-                        'Content-Type' => "application/x-www-form-urlencoded",
-                            'Accept' => "application/json"
-                        ),
-                    'timeout' => 90
-                );
-                if($dolar > 0){
-                    $totp = $unit_price / $dolar;
-                    $urlapi = $host_api . "/api/simulate?amount=".$totp;
-                    $response = wp_remote_get($urlapi , $payload );
-                    $o = json_decode( wp_remote_retrieve_body( $response ), true );
+
                     if(isset($o["data"]["creditcard"]["installments"])){
                         $parcelas = count($o["data"]["creditcard"]["installments"]);
-                        $in = $parcelas - 1;
-                        if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
-                            if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
-                                $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
+                        $in = $parcelas;
+                        $in2 = $parcelas - 1;
+                        if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                            if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
                                 if($em12x > 0){
-                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
+                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                                     if($lang == 'pt_BR'){
-                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
+                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                                     }
-                                    $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                                    //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
                                 }
                             }
                         }
                     }
-                }
+                } else if( 'BRL' ==  $moeda  ){
+                    /*
+                    if(!isset($_COOKIE['WCPPA_OPT_DOLAR'])){
+                        $payload = array(
+                            'method' => 'GET',
+                            'headers' => array(
+                                'Authorization' => $access_token,
+                                'Content-Type' => "application/x-www-form-urlencoded",
+                                    'Accept' => "application/json"
+                                ),
+                            'timeout' => 90
+                        );
+                        $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
+                        $response = wp_remote_get($urlapi , $payload );
+                        $o = json_decode( wp_remote_retrieve_body( $response ), true );
+                        if(isset($o["data"]["dolar"])){
+                            $dolar = $o["data"]["dolar"];
+                        }
+                    }else{
+                        $dolar = $_COOKIE['WCPPA_OPT_DOLAR'];
+                    }
+                    */
+    
+    
+    
+    
+                    //echo $dolar;
+                    //echo "DOLAR = " . $_COOKIE['WCPPA_OPT_DOLAR'];
+                    
+    
+                    //RECALCULA
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    //if($dolar > 0){
+                        //$totp = $unit_price / $dolar;
+                        $urlapi = $host_api . "/api/simulate?currency=BRL&amount=".$unit_price;
+                        $response = wp_remote_get($urlapi , $payload );
+                        $o = json_decode( wp_remote_retrieve_body( $response ), true );
 
-
-            } else{
-                $payload = array(
-                    'method' => 'GET',
-                    'headers' => array(
-                        'Authorization' => $access_token,
-                        'Content-Type' => "application/x-www-form-urlencoded",
-                            'Accept' => "application/json"
-                        ),
-                    'timeout' => 90
-                );
-                $urlapi = $host_api . "/api/simulate?amount=".$unit_price;
-                $response = wp_remote_get($urlapi , $payload );
-                $o = json_decode( wp_remote_retrieve_body( $response ), true );
-                if(isset($o["data"]["creditcard"]["installments"])){
-                    $parcelas = count($o["data"]["creditcard"]["installments"]);
-                    $in = $parcelas - 1;
-                    if(isset($o["data"]["creditcard"]["installments"][$in]["monthly"])){
-                        if($o["data"]["creditcard"]["installments"][$in]["monthly"] !== null){
-                            $em12x = $o["data"]["creditcard"]["installments"][$in]["monthly"];
-                            if($em12x > 0){
-                                $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".")." by Parcelow";
+                        if(isset($o["data"]["pix"]["amount"])){
+                            if($o["data"]["pix"]["amount"] > 0){
+                                $pixant = $o["data"]["pix"]["amount"];
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                                 if($lang == 'pt_BR'){
-                                    $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".")." via Parcelow";
+                                    $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                                 }
-                                $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                                //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                            }
+                        }
+    
+                        if(isset($o["data"]["ted"]["amount"])){
+                            if($o["data"]["ted"]["amount"] > 0){
+                                $tedant = $o["data"]["ted"]["amount"];
+                                $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                if($lang == 'pt_BR'){
+                                    $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                }
+                                //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                            }
+                        }
+
+                        if(isset($o["data"]["creditcard"]["installments"])){
+                            $parcelas = count($o["data"]["creditcard"]["installments"]);
+                            $in = $parcelas;
+                            $in2 = $parcelas - 1;
+                            if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                                if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                    $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
+                                    if($em12x > 0){
+                                        $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                        if($lang == 'pt_BR'){
+                                            $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                        }
+                                        //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                                    }
+                                }
+                            }
+                        }
+                    //}
+    
+    
+                } else{
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    $urlapi = $host_api . "/api/simulate?currency=USD&amount=".$unit_price;
+                    $response = wp_remote_get($urlapi , $payload );
+                    $o = json_decode( wp_remote_retrieve_body( $response ), true );
+
+                    if(isset($o["data"]["pix"]["amount"])){
+                        if($o["data"]["pix"]["amount"] > 0){
+                            $pixant = $o["data"]["pix"]["amount"];
+                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                            //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                        }
+                    }
+
+                    if(isset($o["data"]["ted"]["amount"])){
+                        if($o["data"]["ted"]["amount"] > 0){
+                            $tedant = $o["data"]["ted"]["amount"];
+                            $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_ted = "<i class='fa-solid fa-money-bill-transfer'></i> TED R$ ".number_format($o["data"]["ted"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                            //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                        }
+                    }
+
+                    if(isset($o["data"]["creditcard"]["installments"])){
+                        $parcelas = count($o["data"]["creditcard"]["installments"]);
+                        $in = $parcelas;
+                        $in2 = $parcelas - 1;
+                        if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                            if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
+                                if($em12x > 0){
+                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    if($lang == 'pt_BR'){
+                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    }
+                                    //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
+                                }
                             }
                         }
                     }
                 }
+                
             }
-            
         }
     }
+
+
+    
+    if ( !is_admin() ){
+        //echo "update_prods: " . $update_prods . "<br>";
+        if($update_prods > 0){
+            $key_pills_1 = 'custom_text_field_title_parcela';
+            $key_pills_2 = 'custom_text_field_title_parcela_valor';
+            $key_pills_3 = 'custom_text_field_title_parcela_time';
+            $key_pills_4 = 'custom_text_field_title_parcela_dolar';
+            $key_pills_5 = 'custom_text_field_title_parcela_moeda';
+            $key_pills_6 = 'custom_text_field_title_parcela_valor_produto';
+            $key_pills_7 = 'custom_text_field_title_ted_valor_produto';
+            $key_pills_8 = 'custom_text_field_title_pix_valor_produto';
+    
+            $product_pills1 = wc_get_product( $product->get_id() );
+            $product_pills1->update_meta_data( $key_pills_1, sanitize_text_field($in) );
+            $product_pills1->update_meta_data( $key_pills_2, sanitize_text_field($em12x) );
+            $product_pills1->update_meta_data( $key_pills_3, sanitize_text_field(date('Y-m-d H:i:s')) );
+            $product_pills1->update_meta_data( $key_pills_4, sanitize_text_field($dolar) );
+            $product_pills1->update_meta_data( $key_pills_5, sanitize_text_field($moeda) );
+            $product_pills1->update_meta_data( $key_pills_6, sanitize_text_field($unit_price) );
+            $product_pills1->update_meta_data( $key_pills_7, sanitize_text_field($tedant) );
+            $product_pills1->update_meta_data( $key_pills_8, sanitize_text_field($pixant) );
+            
+            
+            $product_pills1->save(); // Sync and save to database
+        }
+        $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $hmllegprice_pix.$hmllegprice_ted.$leg . '</span>';
+    }
+
+
+    
     return  $price_html;
 }
 
