@@ -5,7 +5,7 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 2.6
+ * Version: 2.7
  * Requires at least: 5.9
  * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
@@ -2438,10 +2438,222 @@ function add_approximately_price( $price_html, $product)
             $product_pills1->save(); // Sync and save to database
         }
         $price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $hmllegprice_pix.$hmllegprice_ted.$leg . '</span>';
-    }
-
-
-    
+    }    
     return  $price_html;
 }
+
+
+function filter_woocommerce_product_cross_sells_products_heading() {
+    $moeda = get_option('woocommerce_currency');
+    $totalcart = WC()->cart->total;  
+
+    $custom_text_field_title_parcela = 0;
+    $custom_text_field_title_parcela_valor = 0;
+    $custom_text_field_title_parcela_time = 0;
+    $custom_text_field_title_parcela_dolar = 0;
+    $custom_text_field_title_parcela_moeda = '';
+    $dolar = 0;
+    $moeda2 = '';
+    $em12x = 0;
+    $in = 0;
+    $prodvant = 0;
+    $tedant = 0;
+    $pixant = 0;
+    $hmllegprice_pix = "";
+    $hmllegprice_ted = "";
+    $price_html = '';    
+    $update_prods = 0;   
+
+    $update_prods++;
+    $obj = WC_Admin_Settings::get_option( 'woocommerce_parcelow_settings' );
+    $secret_key_producao = $obj["secret_key_producao"];
+    $client_id_producao = $obj["client_id_producao"];
+    $parc_val_aprox = $obj["parc_val_aprox"];
+    $host_producao = $obj["host_producao"];
+    $host_sandbox = $obj["host_sandbox"];
+    
+    $ambiente = $obj["ambiente"];
+    $client_id_sandbox = $obj["client_id_sandbox"];
+    $secret_key_sandbox = $obj["secret_key_sandbox"];
+    
+        if($ambiente == 0){ //sandbox
+            $client_id = $client_id_sandbox;
+            $secret_key = $secret_key_sandbox; 
+            $host_api = $host_sandbox;
+        } else{
+            $client_id = $client_id_producao;
+            $secret_key = $secret_key_producao;
+            $host_api = $host_producao;
+        } 
+    
+        if ( !is_admin() ){            
+            $count = 0;
+            $em12x = 0;
+            $in = 0;
+    
+            if($parc_val_aprox == 0){
+    
+                if(!isset( $_COOKIE['WCPPA_OPT_ACC_TOK'] )){
+                    $reqJson = array('client_id' => $client_id,
+                    'client_secret' => $secret_key,
+                    'grant_type' => "client_credentials");
+                    $payload = array(
+                    'method' => 'POST',
+                    'headers' => array('Content-Type' => "application/x-www-form-urlencoded",
+                                    'Accept' => "application/json",
+                                    'X-Requested-With' => "XMLHttpRequest"
+                            ),
+                    'body' =>  $reqJson,
+                    'timeout' => 90
+                    );
+                    $response = wp_remote_post($host_api . '/oauth/token', $payload);
+                    $body = json_decode( wp_remote_retrieve_body( $response ), true );  
+                   
+                    $access_token = "Bearer ". $body['access_token'];
+                } else{
+                    $access_token = "Bearer ". $_COOKIE['WCPPA_OPT_ACC_TOK'];
+                }    
+        
+                $lang = get_locale();                
+                $leg = "";    
+                
+                if('USD' ==  $moeda ){
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    $urlapi = $host_api . "/api/simulate?currency=USD&amount=".$totalcart;
+                    $response = wp_remote_get($urlapi , $payload );
+                    $o = json_decode(wp_remote_retrieve_body($response), true);
+                    if(isset($o["data"]["pix"]["amount"])){
+                        if($o["data"]["pix"]["amount"] > 0){
+                            $pixant = $o["data"]["pix"]["amount"];
+                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                        }
+                    }
+
+                    if(isset($o["data"]["creditcard"]["installments"])){
+                        $parcelas = count($o["data"]["creditcard"]["installments"]);
+                        $in = $parcelas;
+                        $in2 = $parcelas - 1;
+                        if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                            if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
+                                if($em12x > 0){
+                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    if($lang == 'pt_BR'){
+                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if( 'BRL' ==  $moeda  ){
+         
+                    //RECALCULA
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    //if($dolar > 0){
+                        $urlapi = $host_api . "/api/simulate?currency=BRL&amount=".$totalcart;
+                        $response = wp_remote_get($urlapi , $payload );
+                        $o = json_decode( wp_remote_retrieve_body( $response ), true );
+
+                        if(isset($o["data"]["pix"]["amount"])){
+                            if($o["data"]["pix"]["amount"] > 0){
+                                $pixant = $o["data"]["pix"]["amount"];
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                if($lang == 'pt_BR'){
+                                    $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                }
+                            }
+                        }
+                 
+                        if(isset($o["data"]["creditcard"]["installments"])){
+                            $parcelas = count($o["data"]["creditcard"]["installments"]);
+                            $in = $parcelas;
+                            $in2 = $parcelas - 1;
+                            if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                                if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                    $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
+                                    if($em12x > 0){
+                                        $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                        if($lang == 'pt_BR'){
+                                            $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    //}
+    
+    
+                } else{
+                    $payload = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => $access_token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    $urlapi = $host_api . "/api/simulate?currency=USD&amount=".$totalcart;
+                    $response = wp_remote_get($urlapi , $payload );
+                    $o = json_decode( wp_remote_retrieve_body( $response ), true );
+
+                    if(isset($o["data"]["pix"]["amount"])){
+                        if($o["data"]["pix"]["amount"] > 0){
+                            $pixant = $o["data"]["pix"]["amount"];
+                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            if($lang == 'pt_BR'){
+                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ ".number_format($o["data"]["pix"]["amount"],2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            }
+                        }
+                    }
+             
+                    if(isset($o["data"]["creditcard"]["installments"])){
+                        $parcelas = count($o["data"]["creditcard"]["installments"]);
+                        $in = $parcelas;
+                        $in2 = $parcelas - 1;
+                        if(isset($o["data"]["creditcard"]["installments"][$in2]["monthly"])){
+                            if($o["data"]["creditcard"]["installments"][$in2]["monthly"] !== null){
+                                $em12x = $o["data"]["creditcard"]["installments"][$in2]["monthly"];
+                                if($em12x > 0){
+                                    $leg = "Or ".$parcelas." payments of R$ ".number_format($em12x,2,",",".").' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    if($lang == 'pt_BR'){
+                                        $leg = "Ou ".$parcelas."x de R$ ".number_format($em12x,2,",",".").' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }                
+            }
+        }
+    
+    if ( !is_admin() ){
+        $price_html = '<strong style="line-height: 172%;">À vista ou parcelado. <span style="color:#FD5F01;">Parcelow</span> é sua melhor escolha, veja a simulação abaixo:</strong><div class="pgto_parcelow">'. $hmllegprice_pix.$leg . '</div>';
+    }    
+    echo  $price_html;
+}
+
+add_filter('woocommerce_cart_totals_after_order_total', 'filter_woocommerce_product_cross_sells_products_heading');
+add_filter('woocommerce_checkout_terms_and_conditions', 'filter_woocommerce_product_cross_sells_products_heading');
+
+
 
