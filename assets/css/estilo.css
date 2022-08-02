@@ -9,3 +9,9 @@
 .box_cbk_parcela_font2{
     color: #777;
 }
+.pgto_parcelow{
+    position: relative; padding: 1em; margin: 1em 0;  font-size: .92em;  border-radius: 2px; line-height: 1.8; background-color: #efefef; color: #515151;
+}
+.pgto_parcelow:before{
+    content: '';  display: block; border: 1em solid #dfdcde; border-right-color: transparent; border-left-color: transparent; border-top-color: transparent; border-bottom-color: #efefef; position: absolute; top: -0.75em; left: 0; margin: -1em 0 0 2em;
+}
