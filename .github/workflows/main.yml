@@ -11,8 +11,9 @@ jobs:
     deploy:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@master
-            - name: WordPress Plugin Deploy
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Deploy
               uses: yukihiko-shinoda/action-deploy-wordpress-plugin@v2
               env:
                   SVN_REPOSITORY_URL: ${{ secrets.SVN_URL }}
