@@ -13,9 +13,9 @@ jobs:
         steps:
             - uses: actions/checkout@master
             - name: WordPress Plugin Deploy
-              uses: nk-o/action-wordpress-plugin-deploy@master
+              uses: yukihiko-shinoda/action-deploy-wordpress-plugin@v2
               env:
-                  SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-                  SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-                  SOURCE_DIR: .
-                  SLUG: ${{ secrets.SVN_SLUG }}
+                  SVN_REPOSITORY_URL: ${{ secrets.SVN_URL }}
+                  SVN_USER_NAME: ${{ secrets.SVN_USERNAME }}
+                  SVN_USER_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+                  EXCLUDE: "/dist/, /node_modules/, /.git*/"
