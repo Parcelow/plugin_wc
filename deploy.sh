@@ -2,14 +2,14 @@
 # https://zerowp.com/?p=55
 
 # Get the plugin slug from this git repository.
-PLUGIN_SLUG="parcelow"
+#PLUGIN_SLUG="woo-parcelow"
 
 # Get the current release version
 TAG=$(sed -e "s/refs\/tags\///g" <<< $GITHUB_REF)
 
 # Replace the version in these 2 files.
-sed -i -e "s/__STABLE_TAG__/$TAG/g" ./src/readme.md
-sed -i -e "s/__STABLE_TAG__/$TAG/g" "./src/$PLUGIN_SLUG.php"
+sed -i -e "s/__STABLE_TAG__/$TAG/g" ./src/readme.txt
+sed -i -e "s/__STABLE_TAG__/$TAG/g" ./src/woo-parcelow.php
 
 # Get the SVN data from wp.org in a folder named `svn`
 svn co --depth immediates "https://plugins.svn.wordpress.org/$PLUGIN_SLUG" ./svn
