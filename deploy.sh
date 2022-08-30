@@ -2,7 +2,7 @@
 # https://zerowp.com/?p=55
 
 # Get the plugin slug from this git repository.
-#PLUGIN_SLUG="woo-parcelow"
+PLUGIN_SLUG="parcelow"
 
 # Get the current release version
 TAG=$(sed -e "s/refs\/tags\///g" <<< $GITHUB_REF)
@@ -19,10 +19,10 @@ svn update --set-depth infinity ./svn/assets
 svn update --set-depth infinity ./svn/tags/$TAG
 
 # Copy files from `src` to `svn/trunk`
-cp -R ./src/* svn/trunk
+cp -R ./src/* ./svn/trunk
 
 # Copy the images from `assets` to `svn/assets`
-cp -R ./assets/* svn/assets
+cp -R ./assets/* ./svn/assets
 
 # 3. Switch to SVN directory
 cd ./svn
