@@ -19,10 +19,10 @@ svn update --set-depth infinity ./svn/assets
 svn update --set-depth infinity ./svn/tags/$TAG
 
 # Copy files from `src` to `svn/trunk`
-cp -R ./src/* ./svn/trunk
+cp -R ./src/* svn/trunk
 
 # Copy the images from `assets` to `svn/assets`
-cp -R ./assets/* ./svn/assets
+cp -R ./assets/* svn/assets
 
 # 3. Switch to SVN directory
 cd ./svn
