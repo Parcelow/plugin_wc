@@ -430,6 +430,7 @@ function wcppa_carrega_ajax()
             "address_state" => $card_street_state
         ));
 
+
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
 
@@ -459,6 +460,7 @@ function wcppa_carrega_ajax()
         $json = wp_remote_retrieve_body($response);
 
         $json = json_decode($json);
+
         $status_code = wp_remote_retrieve_response_code($response);
         $result = "";
         if ($status_code == 200) {
