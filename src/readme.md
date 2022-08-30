@@ -3,7 +3,7 @@ Contributors: parcelow, julianosoares
 Tags: Security, payment, pagamento, pagamentos, meio de pagamento, gateway de pagamento
 Requires at least: 5.9
 Tested up to: 5.9.3
-Stable tag: /\d+\.\d+\.\d+/g
+Stable tag: **STABLE_TAG**
 Requires PHP: 7.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -16,7 +16,7 @@ The best rates in the market.
 
 Accept payments by PIX, credit and debit cards (including international purchases) and TED.
 
-Payment in 12 installments. 
+Payment in 12 installments.
 
 To learn more about Parcelow visit our website: www.parcelow.com/en/home
 
