@@ -6,7 +6,7 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: 2.8.0
+ * Version: __STABLE_TAG__
  * Requires at least: 5.9
  * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
@@ -744,7 +744,7 @@ function wcppa_carrega_ajax()
         }
 
         $json = json_decode(wp_remote_retrieve_body($response));
-        $html = '<div class="alert alert-warning"><h5>Importante</h5><p>Obrigado por confiar na ParcelowSandbox, Aqui nós prezamos pela transparência, e por isso, informamos que nossa cotação do Dólar é atualizada a cada 15 minutos. Siga até o último passo para conferir o valor atualizado antes de fazer o pagamento.</p></div>';
+        $html = '<div class="alert alert-warning"><h5>Importante</h5><p>Obrigado por confiar na Parcelow, Aqui nós prezamos pela transparência, e por isso, informamos que nossa cotação do Dólar é atualizada a cada 15 minutos. Siga até o último passo para conferir o valor atualizado antes de fazer o pagamento.</p></div>';
         $html .= '<h4>Confirmação dados pessoais</h4><br>';
         $id = 0;
         $ant = '';

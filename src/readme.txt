@@ -1,9 +1,9 @@
-﻿=== Parcelow ===
+=== Parcelow ===
 Contributors: parcelow, julianosoares
 Tags: Security, payment, pagamento, pagamentos, meio de pagamento, gateway de pagamento
 Requires at least: 5.9
 Tested up to: 5.9.3
-Stable tag: 2.8.0
+Stable tag: __STABLE_TAG__
 Requires PHP: 7.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
