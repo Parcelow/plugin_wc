@@ -1769,12 +1769,15 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 $order_status = "";
                 if ($decoded->order->status == 1) { //confirmed
                     $order_status = "confirmed";
+                    WC()->mailer()->emails['WC_Email_New_Order']->trigger($num_pedido);
                 } else if ($decoded->order->status == 2) { //Order paid
                     $order_status = "paid";
                 } else if ($decoded->order->status == 3) { //cancelled
                     $order_status = "cancelled";
+                    WC()->mailer()->emails['WC_Email_Cancelled_Order']->trigger($num_pedido);
                 } else if ($decoded->order->status == 4) { // Declined
                     $order_status = "failed";
+                    WC()->mailer()->emails['WC_Email_Failed_Order']->trigger($num_pedido);
                 } else if ($decoded->order->status == 5) {
                     $order_status = "waitingrec";
                 } else if ($decoded->order->status == 6) {
@@ -2147,9 +2150,9 @@ function add_approximately_price($price_html, $product)
             $leg = "";
 
             if ($pixant > 0) {
-                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($pixant, 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                $hmllegprice_pix = "PIX / TED - R$ " . number_format($pixant, 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                 if ($lang == 'pt_BR') {
-                    $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($pixant, 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                    $hmllegprice_pix = "PIX / TED - R$ " . number_format($pixant, 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                 }
                 //$price_html = '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
             }
@@ -2252,9 +2255,9 @@ function add_approximately_price($price_html, $product)
                     if (isset($o["data"]["pix"]["amount"])) {
                         if ($o["data"]["pix"]["amount"] > 0) {
                             $pixant = $o["data"]["pix"]["amount"];
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             if ($lang == 'pt_BR') {
-                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             }
                             //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
                         }
@@ -2338,9 +2341,9 @@ function add_approximately_price($price_html, $product)
                     if (isset($o["data"]["pix"]["amount"])) {
                         if ($o["data"]["pix"]["amount"] > 0) {
                             $pixant = $o["data"]["pix"]["amount"];
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             if ($lang == 'pt_BR') {
-                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             }
                             //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
                         }
@@ -2394,9 +2397,9 @@ function add_approximately_price($price_html, $product)
                     if (isset($o["data"]["pix"]["amount"])) {
                         if ($o["data"]["pix"]["amount"] > 0) {
                             $pixant = $o["data"]["pix"]["amount"];
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             if ($lang == 'pt_BR') {
-                                $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                                $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                             }
                             //$price_html .= '<span class="amount">'. wc_price( $unit_price ) . '</span><br><span style="color: #777;font-size:0.8em;">'. $leg . '</span>';
                         }
@@ -2462,7 +2465,7 @@ function add_approximately_price($price_html, $product)
 
             $product_pills1->save(); // Sync and save to database
         }
-        $price_html = '<span class="amount">' . wc_price($unit_price) . '</span><br><span style="color: #777;font-size:0.8em;">' . $hmllegprice_pix . $hmllegprice_ted . $leg . '</span>';
+        $price_html = '<span class="amount">' . wc_price($unit_price) . '</span><br><span style="color: #777;font-size:0.8em;">' . $hmllegprice_pix  . $leg . '</span>';
     }
     return  $price_html;
 }
@@ -2562,9 +2565,9 @@ function filter_woocommerce_product_cross_sells_products_heading()
                 if (isset($o["data"]["pix"]["amount"])) {
                     if ($o["data"]["pix"]["amount"] > 0) {
                         $pixant = $o["data"]["pix"]["amount"];
-                        $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                        $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         if ($lang == 'pt_BR') {
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         }
                     }
                 }
@@ -2605,9 +2608,9 @@ function filter_woocommerce_product_cross_sells_products_heading()
                 if (isset($o["data"]["pix"]["amount"])) {
                     if ($o["data"]["pix"]["amount"] > 0) {
                         $pixant = $o["data"]["pix"]["amount"];
-                        $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                        $hmllegprice_pix = "PIX / TED - R$ - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         if ($lang == 'pt_BR') {
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         }
                     }
                 }
@@ -2648,9 +2651,9 @@ function filter_woocommerce_product_cross_sells_products_heading()
                 if (isset($o["data"]["pix"]["amount"])) {
                     if ($o["data"]["pix"]["amount"] > 0) {
                         $pixant = $o["data"]["pix"]["amount"];
-                        $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                        $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' with <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         if ($lang == 'pt_BR') {
-                            $hmllegprice_pix = "<i class='fa-brands fa-pix'></i> PIX / <i class='fa-solid fa-money-bill-transfer'></i> TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
+                            $hmllegprice_pix = "PIX / TED - R$ " . number_format($o["data"]["pix"]["amount"], 2, ",", ".") . ' com <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/parcelow.png" style="width:65px;"><br>';
                         }
                     }
                 }

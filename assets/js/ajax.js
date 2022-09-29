@@ -86,9 +86,7 @@ $(document).ready(function ($) {
                 //carrega parcelas
                 wcppa_getParcelas("card_parcelas", order_id, acc, apihost);
                 //carrega parcelas em dolar
-                wcppa_getParcelasDolar(order_id, acc, apihost);
-
-                wcppa_iniJS();
+                wcppa_getParcelasDolar(order_id, acc, apihost);               
             },
             beforeSend: function () {
                 $(target).html(
