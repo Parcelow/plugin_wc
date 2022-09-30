@@ -21,7 +21,7 @@ svn co --depth immediates "https://plugins.svn.wordpress.org/$PLUGIN_SLUG" ./svn
 echo =================X==X==X========================
 
 echo 🧹 cleanup...
-svn cleanup
+svn cleanup --username $SVN_USERNAME --password $SVN_PASSWORD --non-interactive
 echo =================X==X==X========================
 
 echo ✅ svn update...
