@@ -7,15 +7,21 @@ echo
 
 echo ✅ Get the plugin slug from this git repository.
 PLUGIN_SLUG="parcelow"
+echo $PLUGIN_SLUG
 echo =================X==X==X========================
 
 echo ✅ Get the current release version
 TAG=$(sed -e "s/refs\/tags\///g" <<< $GITHUB_REF)
+echo $TAG
 echo =================X==X==X========================
 
 echo ✅ Get the SVN data from wp.org in a folder named svn
 svn co --depth immediates "https://plugins.svn.wordpress.org/$PLUGIN_SLUG" ./svn --username $SVN_USERNAME --password $SVN_PASSWORD --non-interactive
 
+echo =================X==X==X========================
+
+echo 🧹 cleanup...
+svn cleanup
 echo =================X==X==X========================
 
 echo ✅ svn update...
@@ -26,6 +32,7 @@ echo =================X==X==X========================
 
 echo ✅ if not exist create folder
 [[ -d ./svn/trunk/assets ]] && ls ./svn/trunk || sudo mkdir ./svn/trunk/assets
+ls ./svn/trunk
 echo =================X==X==X========================
 
 echo 💾 Copy files from src to svn/trunk
@@ -55,17 +62,24 @@ pwd
 echo =================X==X==X========================
 
 echo ⚙️ Prepare the files for commit in SVN
+svn cleanup
 svn add --force trunk
 svn add --force assets
 echo =================X==X==X========================
 
 echo 🆕 Create the version tag in svn
+svn cleanup
 svn cp trunk tags/$TAG
 echo =================X==X==X========================
 
 echo ⚙️ Prepare the tag for commit
+svn cleanup
 svn add --force tags
 echo =================X==X==X========================
 
 echo 🗃️ Commit files to wordpress.org.
-svn ci --message "Release $TAG" --username $SVN_USERNAME --password $SVN_PASSWORD --non-interactive
+svn cleanup
+svn ci --message "Release $TAG" \
+       --username $SVN_USERNAME \
+       --password $SVN_PASSWORD \
+       --non-interactive
