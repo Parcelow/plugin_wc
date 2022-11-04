@@ -363,6 +363,17 @@ $(document).ready(function ($) {
             $("#btn_show_pix").on("click", function () {
                 wcppa_pagarComPix("#boxPix");
             });
+            
+             $(".otherpayment").on("click", function () {   
+                 $('#boxCartao').css("display", "none");
+                 $('#boxMeioPagto').css("display", "block");
+            });
+            
+            $(document).on('click','.otherpaymentpix',function(){
+                $('#boxPix').css("display", "none");
+                $('#boxMeioPagto').css("display", "block");
+                clearInterval(myInterval);
+            });
 
             $("#btn_finaliza_com_cartao").on("click", function () {
                 var target = "#boxMsgFinalizaCard";
@@ -792,6 +803,7 @@ $(document).ready(function ($) {
                 }
             }
 
+           var myInterval;
             function wcppa_pagarComPix(target) {
                 var base = $("#WCPPA_PARCELOW_GATEWAY_PLUGIN_URL").val();
                 var order_id = $("#PARCELOW_COD_PED").val();
@@ -845,8 +857,7 @@ $(document).ready(function ($) {
                             order_key;
 
                         $(target).html("");
-                        var link =
-                            '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' +
+                        var link = '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' +
                             qrc.link +
                             '" title="QR CODE PARCELOW" /></div><br><br>';
                         link +=
@@ -865,16 +876,30 @@ $(document).ready(function ($) {
                             "</stron></span><br>TOTAL A PAGAR</p>";
                         link +=
                             '<div id="timer" style="text-align: center; font-size: 2em;font-weight: bold;"></div>';
+                            
                         link +=
-                            '<p style="text-align: center;">Tempo restante para fechar a tela.</p>';
+                            '<div class="alert alert-info text-center txt" role="alert">Payment status checking</div>';
+                            
                         link +=
-                            '<p style="text-align: center;"><a href="' +
-                            pageURL +
-                            '">Clique aqui se já pagou.</a></p>';
+                            '<div class="txtPaid"></div>';
+                            
                         $(target).html(link);
+                       
+                        myInterval = setInterval(checaStatusPix, 5000); 
+                        
+                    
+                        // link +=
+                        //     '<p style="text-align: center;">Tempo restante para fechar a tela.</p>';
+                        // link +=
+                        //     '<p style="text-align: center;"><a href="' +
+                        //     pageURL +
+                        //     '">Clique aqui se já pagou.</a></p>';
+                     
 
-                        display = $("#timer");
-                        wcppa_startTimer(360, display, pageURL);
+                        // display = $("#timer");
+                        // wcppa_startTimer(360, display, pageURL);
+                        
+                        
                     },
                     beforeSend: function () {
                         $(target).html(
@@ -882,6 +907,50 @@ $(document).ready(function ($) {
                         );
                     },
                 });
+            }
+            
+            
+            function checaStatusPix(){
+                 var order_id = $("#PARCELOW_COD_PED").val();
+                 var order_id_local = $("#PARCELOW_COD_PED_LOCAL").val();
+                 var acc = $("#PARCELOW_ACC").val();
+                 var apihost = $("#PARCELOW_API_HOST").val();
+                 var order_key = $("#WC_PARCELOW_ORDER_KEY").val();
+                    jQuery.ajax({
+                        url: script_ajax.ajax_url,
+                        type: "POST",
+                        dataType: "JSON",
+                        data: {
+                            action: "wcppa_carrega_ajax",
+                            acao: "STATUSPIX",
+                            order_id: order_id,
+                            acc: acc,
+                            apihost: apihost,
+                        },
+                        beforeSend: function() {
+            				$('.txt').text('Payment status checking');
+            			},
+                        success: function (res) {
+                            if(res.status == 2){
+                              $('.txt').css({"display" : "none"});
+                              $('.txtPaid').html('<div class="alert alert-success text-center" role="alert">'+res.status_text+', redirecionando aguarde ...</div>');
+                              var pageURL = $(location).attr("href");
+                              pageURL = pageURL.replaceAll("?show_parcelow", "");
+                              setTimeout(function() { 
+                                 window.location.href = pageURL + 'order-received/' + order_id_local + '/?key=' + order_key;
+                                  clearInterval(myInterval);
+                              }, 7000);
+                            }
+                        },
+                        error: function (request, status, error) {
+                            console.log(request.responseText);
+                            console.log(error);
+                        },
+                        complete: function() {
+            				$('.txt').text('Awating for payment');
+            			}
+                        
+                    })
             }
 
             function wcppa_startTimer(duration, display, pageURL) {

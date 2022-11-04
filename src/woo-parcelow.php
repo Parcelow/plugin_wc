@@ -6,7 +6,7 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: __STABLE_TAG__
+ * Version: 2.9.4
  * Requires at least: 5.9
  * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
@@ -324,7 +324,7 @@ function wcppa_custom_woocommerce_billing_fields($fields)
     $fields['billing_cpf'] = array(
         'label' => __('CPF (Brazil) - only number', 'woocommerce'), // Add custom field label
         'placeholder' => _x('Your CPF here', 'placeholder', 'woocommerce'), // Add custom field placeholder
-        'required' => false, // if field is required or not
+        'required' => true, // if field is required or not
         'clear' => false, // add clear or not
         'type' => 'text', // add field type
         'class' => array('my-css')    // add class name
@@ -517,7 +517,40 @@ function wcppa_carrega_ajax()
         ];
 
         echo wp_send_json($retorno);
-    } else if (sanitize_text_field($_POST["acao"]) == 'RESPONSEQUESTION') {
+    } else if (sanitize_text_field($_POST["acao"]) == 'STATUSPIX') {
+        $order_id = sanitize_text_field($_POST["order_id"]);
+        $access_token = sanitize_text_field($_POST["acc"]);
+        $apihost = sanitize_text_field($_POST["apihost"]);
+
+        $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
+        $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
+
+        $payload = array(
+            'method' => 'GET',
+            'headers' => array(
+                'Authorization' => $access_token,
+                'Content-Type' => "application/x-www-form-urlencoded",
+                'Accept' => "application/json"
+            ),
+            'timeout' => 90,
+            'body' => $data
+        );
+
+        $urlapi = $apihost . "/api/order/" . $order_id;
+
+        $response = wp_remote_post($urlapi, $payload);
+        $json = wp_remote_retrieve_body($response);
+
+        $json = json_decode($json);
+        
+        $ret_status = [
+            "status" => $json->data->status,
+	        "status_text" => $json->data->status_text
+        ];
+
+        echo wp_send_json($ret_status );
+        
+    }else if (sanitize_text_field($_POST["acao"]) == 'RESPONSEQUESTION') {
 
         $order_id = sanitize_text_field($_POST["order_id"]);
         $access_token = sanitize_text_field($_POST["acc"]);
@@ -569,6 +602,7 @@ function wcppa_carrega_ajax()
         $json = wp_remote_retrieve_body($response);
 
         $json = json_decode($json);
+     
         $status = 0;
         if ($json->success == true) {
             $status = 1;
@@ -736,7 +770,7 @@ function wcppa_carrega_ajax()
 
         $response = wp_remote_get($urlapi, $payload);
         if (is_wp_error($response)) {
-            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.', 'wc-gateway-nequi'));
+            throw new Exception(__('Há um problema para o gateway de pagamento connection. Desculpe pela inconveniência.', 'wc-gateway-nequi'));
         }
 
         if (empty($response['body'])) {
@@ -744,38 +778,47 @@ function wcppa_carrega_ajax()
         }
 
         $json = json_decode(wp_remote_retrieve_body($response));
-        $html = '<div class="alert alert-warning"><h5>Importante</h5><p>Obrigado por confiar na Parcelow, Aqui nós prezamos pela transparência, e por isso, informamos que nossa cotação do Dólar é atualizada a cada 15 minutos. Siga até o último passo para conferir o valor atualizado antes de fazer o pagamento.</p></div>';
-        $html .= '<h4>Confirmação dados pessoais</h4><br>';
-        $id = 0;
-        $ant = '';
-        $quest = 0;
-        foreach ($json->questions as $r) {
-
-            if ($r->id != $ant) {
-                $html .= '<h6>' . $r->question . '</h6>';
-                $html .= '<ul class="list-group list-group-flush">';
-                $quest++;
+        if($json->success == 1){
+            $html = '<div class="alert alert-warning"><h5>Importante</h5><p>Obrigado por confiar na Parcelow, Aqui nós prezamos pela transparência, e por isso, informamos que nossa cotação do Dólar é atualizada a cada 15 minutos. Siga até o último passo para conferir o valor atualizado antes de fazer o pagamento.</p></div>';
+            $html .= '<h4>Confirmação dados pessoais</h4><br>';
+            $id = 0;
+            $ant = '';
+            $quest = 0;
+            foreach ($json->questions as $r) {
+    
+                if ($r->id != $ant) {
+                    $html .= '<h6>' . $r->question . '</h6>';
+                    $html .= '<ul class="list-group list-group-flush">';
+                    $quest++;
+                }
+    
+                foreach ($r->answers as $a) {
+                    $html .= '<label class="list-group-item">
+                    <input class="form-check-input me-1 " type="radio" name="quest_' . $quest . '" value="' . $r->id . ";" . $a->id . '">
+                    ' . $a->answer . '
+                    </label>';
+                }
+    
+                if ($r->id != $ant) {
+                    $html .= '</ul>';
+                }
+    
+                $ant = $r->id;
             }
-
-            foreach ($r->answers as $a) {
-                $html .= '<label class="list-group-item">
-                <input class="form-check-input me-1 " type="radio" name="quest_' . $quest . '" value="' . $r->id . ";" . $a->id . '">
-                ' . $a->answer . '
-                </label>';
-            }
-
-            if ($r->id != $ant) {
-                $html .= '</ul>';
-            }
-
-            $ant = $r->id;
+            $html .= '<br><a class="btn btn-warning" id="btn_response_question">Prosseguir</a>';
+            $html .= '<div id="boxRespQuests"></div><br><br>';
+            $retorno = [
+                "status" => 1,
+                "texto" => $html
+            ];
         }
-        $html .= '<br><a class="btn btn-warning" id="btn_response_question">Prosseguir</a>';
-        $html .= '<div id="boxRespQuests"></div><br><br>';
-        $retorno = [
-            "status" => 1,
-            "texto" => $html
-        ];
+        else{
+             $html = '<div class="alert alert-danger"><h5>Atenção! </h5><p>Não foi possível gerar as perguntas de validação, entre em contato com o administrador do site</p></div>';
+             $retorno = [
+                "status" => 0,
+                "texto" => $html
+            ];
+        }
         echo wp_send_json($retorno);
     } else if (sanitize_text_field($_POST["acao"]) == 'INICIAFRONTPARCELOW') {
         global $wp;
@@ -911,10 +954,16 @@ function wcppa_carrega_ajax()
 
                 </div>
 
-                <div id="boxPix" class="w-100" style="display:none"></div>
+                <div id="boxPix" class="w-100" style="display:none">
+                   
+                </div>
 
                 <div id="boxCartao" class="w-100" style="display:none">
-
+                    <div class="col-md-12 mt-5">
+                        <div class="mb-3">
+                            <a class="btn btn-info otherpayment" href="javascript:;"><i class="fa-solid fa-arrow-left"></i> Alterar forma de pagamento</a>
+                        </div>
+                   </div>
                     <form onsubmit="return false;" class="w-100">
                         <div class="row align-items-start">
                         
@@ -956,7 +1005,10 @@ function wcppa_carrega_ajax()
 
                             <div class="col-sm-12 mt-5 mb-3">
                                 <h5>Escolha em quantas vezes quer pagar</h5>
+                                <p class="msgparcelas"> * Arredondamentos calculados pela administradora do cartão podem causar diferenças de centavos no valor das parcelas e/ou valor total.</p>
                             </div>
+                            
+                            
 
                             <div class="col-sm-6">
                                 <div class="card">
