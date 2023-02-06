@@ -862,7 +862,7 @@ $(document).ready(function ($) {
                             '" title="QR CODE PARCELOW" /></div><br><br>';
                         link +=
                             '<br><br><p class="text-center"><img onclick="navigator.clipboard.writeText(\'' +
-                            qrc.link +
+                            qrc.copiaecola +
                             "');$('#box_parcelow_alert').css('display','block');\" style=\"cursor:pointer;\" src=\"" +
                             base +
                             'assets/imgs/copiaecola.png"></p>';

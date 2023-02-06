@@ -513,7 +513,8 @@ function wcppa_carrega_ajax()
         $json = json_decode($json);
 
         $retorno = [
-            "link" => $json->qrcode
+            "link" => $json->qrcode,
+            "copiaecola" => $json->brCode
         ];
 
         echo wp_send_json($retorno);
