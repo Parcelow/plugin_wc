@@ -322,12 +322,13 @@ function wcppa_custom_woocommerce_billing_fields($fields)
 {
 
     $fields['billing_cpf'] = array(
-        'label' => __('CPF (Brazil) - only number', 'woocommerce'), // Add custom field label
-        'placeholder' => _x('Your CPF here', 'placeholder', 'woocommerce'), // Add custom field placeholder
+        'label' => __('CPF/CNPJ (Brazil) - only number', 'woocommerce'), // Add custom field label
+        'placeholder' => _x('Your CPF/CNPJ here', 'placeholder', 'woocommerce'), // Add custom field placeholder
         'required' => true, // if field is required or not
         'clear' => false, // add clear or not
         'type' => 'text', // add field type
-        'class' => array('my-css')    // add class name
+        'class' => array('my-css'),    // add class name
+        'input_class' => array('cnpjecpf'),
     );
 
     return $fields;
@@ -846,12 +847,12 @@ function wcppa_carrega_ajax()
 
         $order = wc_get_order($order_id);
         if ($order) {
-
             $data = $order->get_data();
             $order_status = $data['status'];
             $total = $order->get_total();
             $total = (string) $total;
             $order_key = $order->get_order_key();
+            $cpf_cnpj = $order->get_meta('_billing_cpf', true);
         } else {
             $order_status = '';
             $total = 0;
@@ -868,6 +869,7 @@ function wcppa_carrega_ajax()
         $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_KEY" id="WC_PARCELOW_ORDER_KEY" value="' . $order_key . '">';
         $descrip_method .= '<input type="hidden" name="WC_PARCELOW_ORDER_TOTAL_EMDOLAR" id="WC_PARCELOW_ORDER_TOTAL_EMDOLAR" value="' . $order_total_emdolar . '">';
         $descrip_method .= '<input type="hidden" name="WC_PARCELOW_JSON_PARCELAS" id="WC_PARCELOW_JSON_PARCELAS" value="' . $json_parc_dolas . '">';
+        $descrip_method .= '<input type="hidden" name="WC_PARCELOW_CNPJ_CPF" id="WC_PARCELOW_CNPJ_CPF" value="' . $cpf_cnpj . '">';
 
         $namecli = get_user_meta(get_current_user_id(), 'billing_first_name', true) . ' ' . get_user_meta(get_current_user_id(), 'billing_last_name', true);
         $ufcli = get_user_meta(get_current_user_id(), 'billing_state', true);

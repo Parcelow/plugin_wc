@@ -27,6 +27,7 @@ $(document).ready(function ($) {
                         var ped_cod_parcelow = $("#PARCELOW_COD_PED").val();
                         var acc = $("#PARCELOW_ACC").val();
                         var apihost = $("#PARCELOW_API_HOST").val();
+                        var cpf_cnpj = $("#WC_PARCELOW_CNPJ_CPF").val();
 
                         var myModal = new bootstrap.Modal(
                             document.getElementById("mod_gatway_parcelow"),
@@ -35,12 +36,21 @@ $(document).ready(function ($) {
                             }
                         );
                         myModal.show();
-                        wcppa_getQuestions(
-                            "#boxQuestions",
-                            ped_cod_parcelow,
-                            acc,
-                            apihost
-                        );
+                        if(cpf_cnpj.length > 14){
+                            wcppa_iniJS();
+                            wcppa_getParcelas("card_parcelas", ped_cod_parcelow, acc, apihost);
+                             //carrega parcelas em dolar
+                            wcppa_getParcelasDolar(ped_cod_parcelow, acc, apihost);
+                             $("#boxMeioPagto").css("display", "block");
+                        }
+                        else{
+                            wcppa_getQuestions(
+                                "#boxQuestions",
+                                ped_cod_parcelow,
+                                acc,
+                                apihost
+                            );
+                        }
                     }, 1000);
                 }
             },
@@ -1103,4 +1113,16 @@ $(document).ready(function ($) {
             }
         });
     }
+
+    var options = {
+        onKeyPress: function (cpf, ev, el, op) {
+            var masks = ["000.000.000-000", "00.000.000/0000-00"];
+            $(".cnpjecpf").mask(
+                cpf.length > 14 ? masks[1] : masks[0],
+                op
+            );
+        },
+    };
+   $('.cnpjecpf').mask('000.000.000-000', options);
+
 });
