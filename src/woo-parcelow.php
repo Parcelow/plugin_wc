@@ -894,7 +894,7 @@ function wcppa_carrega_ajax()
                 <div id="wcppa_boxValidaTotal" style="display:none">
                     <div class="alert alert-warning"><h5>Importante</h5>
                     <p>
-                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $3,000,00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
+                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $10,000.00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
                     <strong>PESSOA FÍSICA</strong><br>
                     RG ou CNH<br>
                     Comprovante de Endereço<br>

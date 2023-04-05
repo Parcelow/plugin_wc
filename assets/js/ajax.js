@@ -83,7 +83,7 @@ $(document).ready(function ($) {
 
                 var totord = $("#WC_PARCELOW_ORDER_TOTAL_EMDOLAR").val();
                 //console.log('total = ' + totord);
-                if (parseFloat(totord) >= 3000) {
+                if (parseFloat(totord) >= 10000) {
                     $("#wcppa_boxValidaTotal").css("display", "block");
                     $("#boxQuestions").css("display", "none");
                 } else {
