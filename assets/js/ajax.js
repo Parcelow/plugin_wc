@@ -507,7 +507,7 @@ $(document).ready(function ($) {
                 $(this).css("color", "#000");
                 $(this).find("span").css("color", "#000");
 
-                if (vtotal >= 3000) {
+                if (vtotal >= 10000) {
                     $("#wcppa_boxValidaTotal2").css("display", "block");
                     $("#boxCartao").css("display", "none");
                 } else {
@@ -523,12 +523,16 @@ $(document).ready(function ($) {
             });
 
             $("#card_numero").blur(function () {
-                var n = $(this).val();
+                var n2 = $(this).val();
+                var n = n2.replace('.', ''); 
+                var n = n.replace('.', ''); 
+                var n = n.replace('.', ''); 
                 var ret = false;
                 if (n != "") {
                     var target = "#boxMsgCard";
                     wcppa_showMsg(target);
                     ret = wcppa_validCardNumber(n);
+                     
                     if (ret == false) {
                         $(target).html(
                             '<span style="color: #dc3545;"><i class="fa-solid fa-circle-exclamation"></i> Inválido.</span>'
@@ -675,6 +679,27 @@ $(document).ready(function ($) {
 
             $(".fixocel").mask(SPMaskBehavior, spOptions);
             //}
+            
+              var cardmark = {
+                onKeyPress: function (card, ev, el, op) {
+                    var masks = ["0000.0000.0000.0000", "0000.000000.00000", "0000.000000.0000"];
+                        if(card.substr(0,2) === '37' || card.substr(0,2) === '34') {
+                            var teste = masks[1];
+                        }
+                        else  if(card.substr(0,2) === '30') {
+                            var teste = masks[2];
+                        }
+                        else{
+                            var teste = masks[0];
+                        }
+                        $("#card_numero").mask(
+                            teste,
+                            op
+                        );
+                },
+            };
+            
+             $('#card_numero').mask('0000.0000.0000.0000', cardmark);
 
             function wcppa_validCardNumber(cardNo) {
                 let even = false;
@@ -696,6 +721,42 @@ $(document).ready(function ($) {
                     0
                 );
             }
+          
+             
+              function valid_credit_card(value) {
+              // accept only digits, dashes or spaces
+                if (/[^0-9-\s]+/.test(value)) return false;
+        
+                // The Luhn Algorithm. It's so pretty.
+                var nCheck = 0, nDigit = 0, bEven = false;
+                value = value.replace(/\D/g, "");
+        
+                for (var n = value.length - 1; n >= 0; n--) {
+                    var cDigit = value.charAt(n),
+                          nDigit = parseInt(cDigit, 10);
+        
+                    if (bEven) {
+                        if ((nDigit *= 2) > 9) nDigit -= 9;
+                    }
+        
+                    nCheck += nDigit;
+                    bEven = !bEven;
+                }
+        
+                return (nCheck % 10) == 0;
+            }
+            
+            // function wcppa_validCardNumberCard(cardNo,fields) {
+            //   if((fields == '37' || fields == '34') && (cardNo.length < 15)){
+            //       alert("invalido");
+            //   }
+            //     else  if((card.substr(0,2) === '30') && (cardNo.length < 14)) {
+            //       alert("invalido");
+            //   }
+            //   else (cardNo.length < 16){
+            //         alert("invalido");
+            //   }
+            // }
 
             function wcppa_getCep(target, cep) {
                 var acc = $("#PARCELOW_ACC").val();
@@ -1056,12 +1117,8 @@ $(document).ready(function ($) {
                                         "?show_parcelow",
                                         ""
                                     );
-                                    window.location.href =
-                                        pageURL +
-                                        "order-received/" +
-                                        order_id_local +
-                                        "/?key=" +
-                                        order_key;
+                                 
+                                   window.location.href =    pageURL +"order-received/" + order_id_local +"/?key=" +order_key;
                                 }, 3000);
                             } else {
                                 $(target).html(
@@ -1123,6 +1180,6 @@ $(document).ready(function ($) {
             );
         },
     };
-   $('.cnpjecpf').mask('000.000.000-000', options);
+   $('.cnpjecpf').mask('000.000.000-000', options);  
 
 });

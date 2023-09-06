@@ -379,7 +379,6 @@ function wcppa_carrega_scripts()
     wp_enqueue_script('scriptajax', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
     wp_enqueue_script('jquery.mask', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/jquery.mask.min.js');
 
-
     wp_localize_script(
         'scriptajax',
         'script_ajax',
@@ -403,6 +402,7 @@ function wcppa_carrega_ajax()
 
         $card_name = sanitize_text_field($_POST["card_name"]);
         $card_numero = sanitize_text_field($_POST["card_numero"]);
+        $card_numero = str_replace(".","", $card_numero);
         $card_cvv = sanitize_text_field($_POST["card_cvv"]);
         $card_data_valid = sanitize_text_field($_POST["card_data_valid"]);
         $card_data_valid = explode("/", $card_data_valid);
@@ -430,8 +430,7 @@ function wcppa_carrega_ajax()
             "address_city" => $card_street_city,
             "address_state" => $card_street_state
         ));
-
-
+  
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
 
@@ -451,7 +450,7 @@ function wcppa_carrega_ajax()
 
         $response = wp_remote_post($urlapi, $payload);
         if (is_wp_error($response)) {
-            throw new Exception(__('Há um problema para o gateway de pagamento connectin. Desculpe pela inconveniência.', 'wc-gateway-nequi'));
+            throw new Exception(__('Há um problema para o gateway de pagamento connection. Desculpe pela inconveniência.', 'wc-gateway-nequi'));
         }
 
         if (empty($response['body'])) {
@@ -461,20 +460,36 @@ function wcppa_carrega_ajax()
         $json = wp_remote_retrieve_body($response);
 
         $json = json_decode($json);
-
         $status_code = wp_remote_retrieve_response_code($response);
         $result = "";
-        if ($status_code == 200) {
+ 
+        if(isset($json->success) && ($json->success == true)){
             $result = $status_code . ";" . $json->message . ";1";
         }
-        if ($status_code == 400) {
+        else if(isset($json->errors) && ($json->errors != '')){
+             foreach($json->errors as $ky => $vl){
+                 foreach($vl as $ch => $va){
+                  $msg_error = $vl[0];
+                 }
+            }
+            $result = $status_code . ";" . $msg_error . ";2";
+        }
+        else{
             $result = $status_code . ";" . $json->message . ";2";
         }
+       
+       
+        // if ($status_code == 200) {
+        //     $result = $status_code . ";" . $json->message . ";1";
+        // }
+        // if ($status_code == 400) {
+        //     $result = $status_code . ";" . $json->message . ";2";
+        // }
 
         $retorno = [
             "result" => $result
         ];
-
+   
         echo wp_send_json($retorno);
     } else if (sanitize_text_field($_POST["acao"]) == 'GERARPIX') {
         $order_id = sanitize_text_field($_POST["order_id"]);
@@ -885,7 +900,7 @@ function wcppa_carrega_ajax()
         <div class="modal-dialog modal-xl">
         <div class="modal-content">
         <div class="modal-header" style="border: none;">
-            <h5 class="modal-title" id="exampleModalLabel"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"></h5>
+            <h5 class="modal-title" id="exampleModalLabel"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/logo-parcelow.png"><img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/compra_segura.png" style="width:43%; margin-left:20px;"></h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -915,7 +930,7 @@ function wcppa_carrega_ajax()
                 <div id="wcppa_boxValidaTotal2" style="display:none">
                     <div class="alert alert-warning"><h5>Importante</h5>
                     <p>
-                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $3,000,00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
+                    De acordo com a CIRCULAR Nº 3.691, DE 16 DE DEZEMBRO DE 2013, para pedidos com valor maior que $10,000,00, são exigidos os documentos abaixo para comprovação e segurança da transação:<br>
                     <strong>PESSOA FÍSICA</strong><br>
                     RG ou CNH<br>
                     Comprovante de Endereço<br>
@@ -942,17 +957,16 @@ function wcppa_carrega_ajax()
                     <div class="row">
 
                         <div class="col-md-12 text-center">
-                            <h4>Escolha um meio de pagamento</h4><br><br>
+                            <h4>Escolha um meio de pagamento</h4><br>
+                        </div>
+                     
+                        <div class="col-md-6 text-center" style="margin-top:10px;">
+                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:43%;" id="btn_show_form_card">
                         </div>
 
-                        <div class="col-md-6 text-center">
-                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/cartao.png" style="cursor:pointer;width:206px;" id="btn_show_form_card">
+                        <div class="col-md-6 text-center" style="margin-top:10px;">
+                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:43%;" id="btn_show_pix">
                         </div>
-
-                        <div class="col-md-6 text-center">
-                            <img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/pix.png" style="cursor:pointer;width:206px;" id="btn_show_pix">
-                        </div>
-
                     </div>
 
                 </div>
@@ -962,7 +976,7 @@ function wcppa_carrega_ajax()
                 </div>
 
                 <div id="boxCartao" class="w-100" style="display:none">
-                    <div class="col-md-12 mt-5">
+                    <div class="col-md-12 mt-2">
                         <div class="mb-3">
                             <a class="btn btn-info otherpayment" href="javascript:;"><i class="fa-solid fa-arrow-left"></i> Alterar forma de pagamento</a>
                         </div>
@@ -972,7 +986,7 @@ function wcppa_carrega_ajax()
                         
                             <div class="col-md-12 mb-3">
                                 <h5>Digite os dados de seu cartão</h5>
-                                <p style="color: #f7ac08;"><i class="fa-solid fa-circle-info"></i> <span style="font-style:italic;">Não é aceito cartão de terceiro. Utilize um cartão de sua propriedade.</span></p>
+                                <p style="color: #f7ac08;"><i class="fa-solid fa-circle-info"></i> <span style="font-style:italic;">Não é aceito cartão de terceiro. Utilize um cartão da mesma propriedade do cadastro informado na etapa anterior.</span></p>
                                 <input type="hidden" id="card_parcelas">
                             </div>
 
@@ -1041,7 +1055,7 @@ function wcppa_carrega_ajax()
                                 </div>
                             </div>
 
-                            <div class="col-md-9">
+                            <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="card_street" class="form-label">Endereço <span style="color:red;">*</span></label>
                                     <input type="text" class="form-control" placeholder="" name="card_street" id="card_street" value="' . $logra . '" required>
@@ -1115,17 +1129,17 @@ function wcppa_carrega_ajax()
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" value="" name="li_termo" id="li_termo" required>
                                     <label class="form-check-label" for="li_termo">
-                                        <span>Li e aceito os <a href="https://parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
-                                        <a href="https://parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma Parcelow.</span>
+                                        <span>Li e aceito os <a href="https://app.parcelow.com/terms-of-use-and-privacy" target="_blank" class="color-primary">termos de uso</a> e 
+                                        <a href="https://app.parcelow.com/privacy-policies" target="_blank" class="color-primary">política de privacidade</a> da plataforma Parcelow.</span>
 
                                     </label>
                                 </div>
 
                             </div>
 
-                            <div class="col-md-12 mt-5">
+                            <div class="col-md-12 mt-4">
                                 <div class="mb-3">
-                                    <a class="btn btn-warning" type="submit" id="btn_finaliza_com_cartao">Finalizar pagamento</a>
+                                    <a class="btn btn-warning" type="submit" id="btn_finaliza_com_cartao" style="padding:15px;">FINALIZAR PAGAMENTO</a>
                                 </div>
                             </div>
 
@@ -1683,7 +1697,16 @@ function wcppa_woocommerce_gateway_parcelow_init()
                         'redirect' => "?show_parcelow"
                     ];
                 } else {
-                    wc_add_notice($body['message'], 'error');
+                    if(isset($body['errors']) && ($body['errors'] != '')){
+                        foreach($body['errors'] as $ky => $vl){
+                             foreach($vl as $ch => $va){
+                                wc_add_notice($va, 'error');
+                             }
+                        }
+                    }
+                    else{
+                         wc_add_notice($body['message'], 'error');
+                    }
                     //print_r( $response );
                     return;
                 }
@@ -2730,12 +2753,15 @@ function filter_woocommerce_product_cross_sells_products_heading()
                     }
                 }
             }
+            
+            $price_html .= '<strong style="line-height: 172%;">À vista ou parcelado. <span style="color:#FD5F01;">Parcelow</span> é sua melhor escolha, veja a simulação abaixo:</strong><div class="pgto_parcelow">' . $hmllegprice_pix . $leg . '</div>';
+            $price_html .= '<img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/compra_segura.png" style="width:246px; display: block;margin-left: auto; margin-right: auto;"><br>';
+        }
+        else{
+            $price_html = '<img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/compra_segura.png" style="width:246px; display: block;margin-left: auto; margin-right: auto;"><br>';
         }
     }
 
-    if (!is_admin()) {
-        $price_html = '<strong style="line-height: 172%;">À vista ou parcelado. <span style="color:#FD5F01;">Parcelow</span> é sua melhor escolha, veja a simulação abaixo:</strong><div class="pgto_parcelow">' . $hmllegprice_pix . $leg . '</div>';
-    }
     echo  $price_html;
 }
 
