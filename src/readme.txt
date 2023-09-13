@@ -1,5 +1,5 @@
 === Parcelow ===
-Contributors: parcelow, julianosoares
+Contributors: parcelow, julianosoares, annyangelis
 Tags: Security, payment, pagamento, pagamentos, meio de pagamento, gateway de pagamento
 Requires at least: 5.9
 Tested up to: 5.9.3

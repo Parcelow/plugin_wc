@@ -424,7 +424,7 @@ function wcppa_carrega_ajax()
 		} else if($prefixo==4) {
 			$bandeira = 'visa';
 		} else if($prefixo==3) {
-	    	$prefixo = substr($card_numero, 0, 2);
+	    	    $prefixo = substr($card_numero, 0, 2);
     		if($prefixo==34 OR $prefixo==37) {
     			$bandeira = 'amex';
     		}
