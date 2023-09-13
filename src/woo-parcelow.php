@@ -6,7 +6,7 @@
  * Description: Take credit card payments on your store using Parcelow.
  * Author: Parcelow
  * Author URI: https://parcelow.com/
- * Version: __STABLE_TAG__
+ * Version: 3.0.1
  * Requires at least: 5.9
  * Tested up to: 5.9.3
  * WC requires at least: 6.3.1
@@ -404,8 +404,8 @@ function wcppa_carrega_ajax()
         $card_numero = sanitize_text_field($_POST["card_numero"]);
         $card_numero = str_replace(".","", $card_numero);
         $card_cvv = sanitize_text_field($_POST["card_cvv"]);
-        $card_data_valid = sanitize_text_field($_POST["card_data_valid"]);
-        $card_data_valid = explode("/", $card_data_valid);
+        $card_mes = sanitize_text_field($_POST["card_data_mes"]);
+        $card_ano = sanitize_text_field($_POST["card_data_ano"]);
         $card_parcela = sanitize_text_field($_POST["card_parcelas"]);
         $card_cep = sanitize_text_field($_POST["card_cep"]);
         $card_street = sanitize_text_field($_POST["card_street"]);
@@ -414,14 +414,35 @@ function wcppa_carrega_ajax()
         $card_street_bairro = sanitize_text_field($_POST["card_street_bairro"]);
         $card_street_city = sanitize_text_field($_POST["card_street_city"]);
         $card_street_state = sanitize_text_field($_POST["card_street_state"]);
-
+       
+        $prefixo = substr($card_numero, 0, 1);
+   
+		if($prefixo==6) {
+			$bandeira = 'discover';
+		} else if($prefixo==5) {
+			$bandeira = 'mastercard';
+		} else if($prefixo==4) {
+			$bandeira = 'visa';
+		} else if($prefixo==3) {
+	    	$prefixo = substr($card_numero, 0, 2);
+    		if($prefixo==34 OR $prefixo==37) {
+    			$bandeira = 'amex';
+    		}
+    		if($prefixo==36 OR $prefixo==38) {
+    			$bandeira = 'diners club';
+    		}
+		} else {
+			$bandeira = 'visa';
+		}
+        
+        
         $data = array("method" => "credit-card", "installment" => $card_parcela, "card" => array(
             "number" => $card_numero,
             "holder" => $card_name,
-            "exp_month" => $card_data_valid[0],
-            "exp_year" => $card_data_valid[1],
+            "exp_month" => $card_mes,
+            "exp_year" => $card_ano,
             "cvv" => $card_cvv,
-            "brand" => "visa",
+            "brand" => $bandeira,
             "address_cep" => $card_cep,
             "address_street" => $card_street,
             "address_number" => $card_street_number,
@@ -430,7 +451,7 @@ function wcppa_carrega_ajax()
             "address_city" => $card_street_city,
             "address_state" => $card_street_state
         ));
-  
+     
         $access_token = openssl_decrypt(base64_decode($access_token), "AES-128-ECB", "e4X412AfCJv247");
         $apihost = openssl_decrypt(base64_decode($apihost), "AES-128-ECB", "e4X412AfCJv247");
 
@@ -449,6 +470,7 @@ function wcppa_carrega_ajax()
         $urlapi = $apihost . "/api/order/" . $order_id . "/payment";
 
         $response = wp_remote_post($urlapi, $payload);
+       
         if (is_wp_error($response)) {
             throw new Exception(__('Há um problema para o gateway de pagamento connection. Desculpe pela inconveniência.', 'wc-gateway-nequi'));
         }
@@ -460,6 +482,7 @@ function wcppa_carrega_ajax()
         $json = wp_remote_retrieve_body($response);
 
         $json = json_decode($json);
+      
         $status_code = wp_remote_retrieve_response_code($response);
         $result = "";
  
@@ -990,32 +1013,48 @@ function wcppa_carrega_ajax()
                                 <input type="hidden" id="card_parcelas">
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="card_name" class="form-label">Nome <span style="color:red;">*</span></label>
+                                    <label for="card_name" class="form-label">Nome do portador<span style="color:red;">*</span></label>
                                     <input type="text" class="form-control form-control-lg" placeholder="" name="card_name" id="card_name" value="' . $namecli . '" style="width:100%;" required>
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="card_numero" class="form-label">Número <span style="color:red;">*</span></label>
+                                    <label for="card_numero" class="form-label">Número do cartão <span style="color:red;">*</span></label>
                                     <input type="text" class="form-control form-control-lg nrCard" placeholder="" name="card_numero" id="card_numero" maxlength="16" value=""  style="width:100%;" required>
                                     <div id="boxMsgCard"></div>
                                 </div>
                             </div>
 
-                            <div class="col-md-2">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="card_cvv" class="form-label">CVV <span style="color:red;">*</span></label>
                                     <input type="text" class="form-control form-control-lg cvv" placeholder="" name="card_cvv" id="card_cvv" maxlength="4" value=""  style="width:100%;" required>
                                 </div>
                             </div>
 
-                            <div class="col-md-2">
+                            <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="card_data_valid" class="form-label">Expira em <span style="color:red;">*</span></label>
-                                    <input type="text" class="form-control form-control-lg dataexp" placeholder="MM/YYYY" maxlength="7" name="card_data_valid" id="card_data_valid" value="" required>
+                                    <label for="card_data_mes" class="form-label">Mês de vencimento <span style="color:red;">*</span></label>
+                                      <select class="form-control form-select" id="card_data_mes" name="card_data_mes" style="font-size: 1.25rem;">';
+                                      for($i=1;$i<=12;$i++){
+                                        $descrip_method .= '<option>'.$i.'</option>';
+                                      }                                                                    
+                                     $descrip_method .='</select>
+                                    <div id="boxMsgDataExp"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="card_data_ano" class="form-label">Ano de vencimento <span style="color:red;">*</span></label>
+                                    <select class="form-control form-select" id="card_data_ano" name="card_data_ano" style="font-size: 1.25rem;">';
+                                       for($i=date("Y");$i<=date("Y")+17;$i++){
+                                            $descrip_method .= '<option>'.$i.'</option>';
+                                        } 
+                                     $descrip_method .='</select>
                                     <div id="boxMsgDataExp"></div>
                                 </div>
                             </div>
@@ -1182,6 +1221,7 @@ function wcppa_carrega_ajax()
         echo wp_send_json($retorno);
     }
 }
+
 
 
 

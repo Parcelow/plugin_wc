@@ -392,7 +392,8 @@ $(document).ready(function ($) {
                 var card_name = $("#card_name").val();
                 var card_numero = $("#card_numero").val();
                 var card_cvv = $("#card_cvv").val();
-                var card_data_valid = $("#card_numero").val();
+                var card_data_mes = $("#card_data_mes").val();
+                var card_data_ano = $("#card_data_ano").val();
                 var card_parcelas = $("#card_parcelas").val();
                 var card_cep = $("#card_cep").val();
                 var card_street = $("#card_street").val();
@@ -419,12 +420,17 @@ $(document).ready(function ($) {
                         '<div class="alert alert-danger" role="alert">O campo <strong>CVV - CÓDIGO DE SEGURANÇA</strong> não pode ser vazio.</div>'
                     );
                     wcppa_hiddMsg(target, 3000);
-                } else if (card_data_valid == "") {
+                } else if (card_data_mes == "") {
                     $(target).html(
-                        '<div class="alert alert-danger" role="alert">O campo <strong>DATA DE EXPIRAÇÃO</strong> não pode ser vazio.</div>'
+                        '<div class="alert alert-danger" role="alert">O campo <strong>MÊS DE EXPIRAÇÃO</strong> não pode ser vazio.</div>'
                     );
                     wcppa_hiddMsg(target, 3000);
-                } else if (card_parcelas == "") {
+                } else if (card_data_ano == "") {
+                    $(target).html(
+                        '<div class="alert alert-danger" role="alert">O campo <strong>ANO DE EXPIRAÇÃO</strong> não pode ser vazio.</div>'
+                    );
+                    wcppa_hiddMsg(target, 3000);
+                }else if (card_parcelas == "") {
                     $(target).html(
                         '<div class="alert alert-danger" role="alert">Selecione uma <strong>PARCELA</strong>.</div>'
                     );
@@ -543,7 +549,7 @@ $(document).ready(function ($) {
                 }
             });
 
-            $("#card_data_valid").blur(function () {
+            /*$("#card_data_valid").blur(function () {
                 var da = $(this).val();
 
                 if (da != "" && da.length == 7) {
@@ -559,14 +565,13 @@ $(document).ready(function ($) {
                     var dav = da.split("/");
                     var mesexp = dav[0];
                     var anoexp = dav[1];
-                    //console.log(parseInt(anoexp) +' >= '+ parseInt(ano));
-                    //console.log(parseInt(anoexp) +' >= '+ parseInt(ano) +' && '+ parseInt(mesexp) +' >= '+ parseInt(mes));
+                    console.log(parseInt(anoexp) +' >= '+ parseInt(ano));
+                    console.log(parseInt(anoexp) +' >= '+ parseInt(ano) +' && '+ parseInt(mesexp) +' >= '+ parseInt(mes));
                     if (
                         parseInt(anoexp) == parseInt(ano) &&
                         parseInt(mesexp) >= parseInt(mes)
                     ) {
                         ret++;
-                        //console.log('X1');
                     } else if (
                         parseInt(anoexp) > parseInt(ano) &&
                         parseInt(mesexp) < parseInt(mes) &&
@@ -574,7 +579,6 @@ $(document).ready(function ($) {
                         parseInt(mesexp) <= 12
                     ) {
                         ret++;
-                        //console.log('X2');
                     } else if (
                         parseInt(anoexp) > parseInt(ano) &&
                         parseInt(mesexp) < parseInt(mes) &&
@@ -582,7 +586,6 @@ $(document).ready(function ($) {
                         parseInt(mesexp) <= 12
                     ) {
                         ret++;
-                        //console.log('X3');
                     } else if (
                         parseInt(anoexp) > parseInt(ano) &&
                         parseInt(mesexp) >= parseInt(mes) &&
@@ -590,16 +593,12 @@ $(document).ready(function ($) {
                         parseInt(mesexp) <= 12
                     ) {
                         ret++;
-                        //console.log('X3_1');
                     } else if (parseInt(anoexp) < ano) {
                         ret = 0;
-                        //console.log('X4');
                     } else if (parseInt(mesexp) < 1) {
                         ret = 0;
-                        //console.log('X5');
                     } else if (parseInt(mesexp) > 12) {
                         ret = 0;
-                        //console.log('X6');
                     }
 
                     if (ret == 0) {
@@ -610,7 +609,7 @@ $(document).ready(function ($) {
                         $(this).val("");
                     }
                 }
-            });
+            });*/
 
             /*
             $( "#card_parcelas" ).change(function() {
@@ -1058,7 +1057,8 @@ $(document).ready(function ($) {
                 var card_name = $("#card_name").val();
                 var card_numero = $("#card_numero").val();
                 var card_cvv = $("#card_cvv").val();
-                var card_data_valid = $("#card_data_valid").val();
+                var card_data_mes = $("#card_data_mes").val();
+                var card_data_ano = $("#card_data_ano").val();
                 var card_parcelas = $("#card_parcelas").val();
                 var card_cep = $("#card_cep").val();
                 var card_street = $("#card_street").val();
@@ -1081,7 +1081,8 @@ $(document).ready(function ($) {
                         card_name: card_name,
                         card_numero: card_numero,
                         card_cvv: card_cvv,
-                        card_data_valid: card_data_valid,
+                        card_data_mes: card_data_mes,
+                        card_data_ano: card_data_ano,
                         card_parcelas: card_parcelas,
                         card_cep: card_cep,
                         card_street: card_street,
