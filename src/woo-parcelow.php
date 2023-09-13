@@ -433,8 +433,7 @@ function wcppa_carrega_ajax()
     		}
 		} else {
 			$bandeira = 'visa';
-		}
-        
+		}        
         
         $data = array("method" => "credit-card", "installment" => $card_parcela, "card" => array(
             "number" => $card_numero,
@@ -464,7 +463,6 @@ function wcppa_carrega_ajax()
             ),
             'timeout' => 90,
             'body' => $data
-
         );
 
         $urlapi = $apihost . "/api/order/" . $order_id . "/payment";

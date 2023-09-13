@@ -508,7 +508,6 @@ $(document).ready(function ($) {
                 var valor = $(this).attr("valor");
                 var vtotal = readJsonParcDolar(parseInt(parcela));
                 $("#card_parcelas").val(parseInt(parcela));
-                //console.log('parcela = ' + parcela);
                 $(this).css("background", "#fbbc04");
                 $(this).css("color", "#000");
                 $(this).find("span").css("color", "#000");
