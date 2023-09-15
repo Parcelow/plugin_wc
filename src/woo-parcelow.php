@@ -547,11 +547,12 @@ function wcppa_carrega_ajax()
 
         $json = wp_remote_retrieve_body($response);
 
-        $json = json_decode($json);
+        $json = json_decode($json);        
 
         $retorno = [
             "link" => $json->qrcode,
-            "copiaecola" => $json->brCode
+            "copiaecola" => $json->brCode,
+            "val_tot" => number_format($json->order->total_brl/100, 2, ",", ".")
         ];
 
         echo wp_send_json($retorno);
@@ -1598,7 +1599,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 'client[address_city]' => sanitize_text_field($_POST['billing_city']),
                 'client[address_state]' => sanitize_text_field($_POST['billing_state']),
                 'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
-                'shipping[amount]' => $order->get_total_shipping() * 100,
+                //'shipping[amount]' => $order->get_total_shipping() * 100,
                 'reference' => $REFERENCE,
                 'partner_reference' => $partner_reference
             );
@@ -1610,7 +1611,11 @@ function wcppa_woocommerce_gateway_parcelow_init()
 
             $i = 0;
 
+            $total_final = 0;
             // Get and Loop Over Order Items
+            $item = "";
+            $t = 0;
+            $total_woo = 0;
             foreach ($order->get_items() as $item_id => $item) {
 
                 $product_id = $item->get_product_id();
@@ -1623,12 +1628,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 $price = $this->calcMultiCurrencyBRLtoUSD($price); // BRL change to USD
                 $item_name = $name;
 
-                $args = array_merge($args, array(
-                    'items[' . $i . '][description]' => $item_name,
-                    'items[' . $i . '][quantity]' => $quantity,
-                    'items[' . $i . '][amount]' => $price
-                ));
-
+                $total_final += ($price * $quantity);
                 $i++;
             }
 
@@ -1637,29 +1637,24 @@ function wcppa_woocommerce_gateway_parcelow_init()
             $taxesAmount = (0 + $order->get_total_tax()) * 100;
             $taxesAmount = $this->calcMultiCurrencyBRLtoUSD($taxesAmount); //BRL change to USD
 
-            if ($taxesAmount > 0) {
-
-                $args = array_merge($args, array(
-                    'items[' . $i . '][description]' => $item_name,
-                    'items[' . $i . '][quantity]' => $quantity,
-                    'items[' . $i . '][amount]' =>  $this->calcMultiCurrencyBRLtoUSD(($order->get_total_tax() * 100))
-                )); //BRL change to USD
-
-            }
-
+            $total_final += $taxesAmount;
+      
             $couponCode = "COUPON";
             $discount = (0 + WC()->cart->get_discount_total()) * 100;
             $discount = $this->calcMultiCurrencyBRLtoUSD($discount); // BRL change to USD
 
-            if ($discount > 0) {
-                $args = array_merge($args, array(
-                    'coupon[code]' => $couponCode,
-                    'coupon[value]' => $discount,
-                    'coupon[issuer]' => "merchant_api"
-                ));
-            }
+            $total_final -= $discount;
+            
+            $total_woo = $order->get_total();
+            $total_woo = str_replace(",", "", $total_woo);
+            $total_woo = str_replace(".", "", $total_woo);
 
-            //print_r($args);
+            $reference_ = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
+            $args = array_merge($args, array(
+                    'items[0][description]' => "VENDA ONLINE",
+                    'items[0][quantity]' =>1,
+                    'items[0][amount]' =>  $total_woo
+            )); 
 
             $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token, $REFERENCE);
 
@@ -1687,6 +1682,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
 
 
                 $response = wp_remote_post($urlapi, $payload);
+           
                 if (is_wp_error($response)) {
                     throw new Exception(__(
                         'There is issue for connectin payment gateway. Sorry for the inconvenience.',
@@ -1704,8 +1700,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 if ($body['success'] == true) {
 
                     $order->update_status('wc-pending', __('Awaiting  payment', 'woocommerce'));
-
-
 
                     $data = $body['data'];
                     $total = (string) number_format($body['total'], 2, ",", ".");
@@ -1735,16 +1729,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
                         'redirect' => "?show_parcelow"
                     ];
                 } else {
-                    if(isset($body['errors']) && ($body['errors'] != '')){
-                        foreach($body['errors'] as $ky => $vl){
-                             foreach($vl as $ch => $va){
-                                wc_add_notice($va, 'error');
-                             }
-                        }
-                    }
-                    else{
-                         wc_add_notice($body['message'], 'error');
-                    }
+                    wc_add_notice($body['message'], 'error');
                     //print_r( $response );
                     return;
                 }

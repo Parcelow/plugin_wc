@@ -941,7 +941,7 @@ $(document).ready(function ($) {
                         link += "<br><br>";
                         link +=
                             '<p style="text-align: center;"><span style="font-size: 2em;letter-spacing: -2px;color:#e07128;"><strong>R$ ' +
-                            total_ +
+                            qrc.val_tot +
                             "</stron></span><br>TOTAL A PAGAR</p>";
                         link +=
                             '<div id="timer" style="text-align: center; font-size: 2em;font-weight: bold;"></div>';
