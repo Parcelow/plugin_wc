@@ -1583,78 +1583,124 @@ function wcppa_woocommerce_gateway_parcelow_init()
 
             $REFERENCE = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
 
-            /* Array with parameters for API interaction */
-            $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
-            $args = array(
-                'redirect[success]' => $this->get_return_url($order),
-                'redirect[failed]'  => home_url($wp->request) . '/carrinho',
-                'client[email]' => sanitize_email($_POST['billing_email']),
-                'client[name]'  => sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']),
-                'client[cep]'   => sanitize_text_field($_POST['billing_postcode']),
-                'client[phone]' => sanitize_text_field($_POST['billing_phone']),
-                'client[address_street]' => sanitize_text_field($_POST['billing_address_1']),
-                'client[address_complement]' => (!isset($billing_address_2) ? '' : $billing_address_2),
-                'client[address_number]' => (!isset($billing_address_2) ? '' : $billing_address_2),
-                'client[address_neighborhood]' => sanitize_text_field($_POST['billing_city']),
-                'client[address_city]' => sanitize_text_field($_POST['billing_city']),
-                'client[address_state]' => sanitize_text_field($_POST['billing_state']),
-                'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
-                //'shipping[amount]' => $order->get_total_shipping() * 100,
-                'reference' => $REFERENCE,
-                'partner_reference' => $partner_reference
-            );
-
-
-            if (!is_admin()) {
-                WC()->session->set('WCPPA_NAME', sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']));
-            }
-
-            $i = 0;
-
-            $total_final = 0;
-            // Get and Loop Over Order Items
-            $item = "";
-            $t = 0;
-            $total_woo = 0;
-            foreach ($order->get_items() as $item_id => $item) {
-
-                $product_id = $item->get_product_id();
-                $variation_id = $item->get_variation_id();
-                $product = $item->get_product();
-                $name = $item->get_name();
-                $quantity = $item->get_quantity();
-
-                $price = ($order->get_item_subtotal($item, false)) * 100;
-                $price = $this->calcMultiCurrencyBRLtoUSD($price); // BRL change to USD
-                $item_name = $name;
-
-                $total_final += ($price * $quantity);
-                $i++;
-            }
-
-            $item_name = "TAXES";
-            $quantity = 1;
-            $taxesAmount = (0 + $order->get_total_tax()) * 100;
-            $taxesAmount = $this->calcMultiCurrencyBRLtoUSD($taxesAmount); //BRL change to USD
-
-            $total_final += $taxesAmount;
-      
-            $couponCode = "COUPON";
-            $discount = (0 + WC()->cart->get_discount_total()) * 100;
-            $discount = $this->calcMultiCurrencyBRLtoUSD($discount); // BRL change to USD
-
-            $total_final -= $discount;
+            $moeda = get_option('woocommerce_currency');
             
-            $total_woo = $order->get_total();
-            $total_woo = str_replace(",", "", $total_woo);
-            $total_woo = str_replace(".", "", $total_woo);
-
-            $reference_ = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
-            $args = array_merge($args, array(
-                    'items[0][description]' => "VENDA ONLINE",
-                    'items[0][quantity]' =>1,
-                    'items[0][amount]' =>  $total_woo
-            )); 
+            if($moeda == 'BRL'){
+                    /* Array with parameters for API interaction */
+                    $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
+                    $args = array(
+                        'redirect[success]' => $this->get_return_url($order),
+                        'redirect[failed]'  => home_url($wp->request) . '/carrinho',
+                        'client[email]' => sanitize_email($_POST['billing_email']),
+                        'client[name]'  => sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']),
+                        'client[cep]'   => sanitize_text_field($_POST['billing_postcode']),
+                        'client[phone]' => sanitize_text_field($_POST['billing_phone']),
+                        'client[address_street]' => sanitize_text_field($_POST['billing_address_1']),
+                        'client[address_complement]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+                        'client[address_number]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+                        'client[address_neighborhood]' => sanitize_text_field($_POST['billing_city']),
+                        'client[address_city]' => sanitize_text_field($_POST['billing_city']),
+                        'client[address_state]' => sanitize_text_field($_POST['billing_state']),
+                        'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
+                        //'shipping[amount]' => $order->get_total_shipping() * 100,
+                        'reference' => $REFERENCE,
+                        'partner_reference' => $partner_reference
+                    );
+        
+        
+                    if (!is_admin()) {
+                        WC()->session->set('WCPPA_NAME', sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']));
+                    }
+        
+                    $total_woo = 0;
+                    $total_woo = $order->get_total();
+                    $total_woo = str_replace(",", "", $total_woo);
+                    $total_woo = str_replace(".", "", $total_woo);
+        
+                    $reference_ = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
+                    $args = array_merge($args, array(
+                            'items[0][description]' => "VENDA ONLINE",
+                            'items[0][quantity]' =>1,
+                            'items[0][amount]' =>  $total_woo
+                    ));
+            }else{
+                 /* Array with parameters for API interaction */
+                    $billing_address_2 = sanitize_text_field($_POST['billing_address_2']);
+                    $args = array(
+                        'redirect[success]' => $this->get_return_url($order),
+                        'redirect[failed]'  => home_url($wp->request) . '/carrinho',
+                        'client[email]' => sanitize_email($_POST['billing_email']),
+                        'client[name]'  => sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']),
+                        'client[cep]'   => sanitize_text_field($_POST['billing_postcode']),
+                        'client[phone]' => sanitize_text_field($_POST['billing_phone']),
+                        'client[address_street]' => sanitize_text_field($_POST['billing_address_1']),
+                        'client[address_complement]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+                        'client[address_number]' => (!isset($billing_address_2) ? '' : $billing_address_2),
+                        'client[address_neighborhood]' => sanitize_text_field($_POST['billing_city']),
+                        'client[address_city]' => sanitize_text_field($_POST['billing_city']),
+                        'client[address_state]' => sanitize_text_field($_POST['billing_state']),
+                        'client[cpf]' => sanitize_text_field($_POST['billing_cpf']),
+                        'shipping[amount]' => $order->get_total_shipping() * 100,
+                        'reference' => $REFERENCE,
+                        'partner_reference' => $partner_reference
+                    );
+        
+        
+                    if (!is_admin()) {
+                        WC()->session->set('WCPPA_NAME', sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']));
+                    }
+        
+                    $i = 0;
+        
+                    // Get and Loop Over Order Items
+                    foreach ($order->get_items() as $item_id => $item) {
+        
+                        $product_id = $item->get_product_id();
+                        $variation_id = $item->get_variation_id();
+                        $product = $item->get_product();
+                        $name = $item->get_name();
+                        $quantity = $item->get_quantity();
+        
+                        $price = ($order->get_item_subtotal($item, false)) * 100;
+                        $price = $this->calcMultiCurrencyBRLtoUSD($price); // BRL change to USD
+                        $item_name = $name;
+        
+                        $args = array_merge($args, array(
+                            'items[' . $i . '][description]' => $item_name,
+                            'items[' . $i . '][quantity]' => $quantity,
+                            'items[' . $i . '][amount]' => $price
+                        ));
+                        $i++;           
+                    }
+        
+                    $item_name = "TAXES";
+                    $quantity = 1;
+                    $taxesAmount = (0 + $order->get_total_tax()) * 100;
+                    $taxesAmount = $this->calcMultiCurrencyBRLtoUSD($taxesAmount); //BRL change to USD
+        
+                    if ($taxesAmount > 0) {
+        
+                        $args = array_merge($args, array(
+                            'items[' . $i . '][description]' => $item_name,
+                            'items[' . $i . '][quantity]' => $quantity,
+                            'items[' . $i . '][amount]' =>  $this->calcMultiCurrencyBRLtoUSD(($order->get_total_tax() * 100))
+                        )); //BRL change to USD
+        
+                    }
+        
+                    $couponCode = "COUPON";
+                    $discount = (0 + WC()->cart->get_discount_total()) * 100;
+                    $discount = $this->calcMultiCurrencyBRLtoUSD($discount); // BRL change to USD
+        
+                    if ($discount > 0) {
+                        $args = array_merge($args, array(
+                            'coupon[code]' => $couponCode,
+                            'coupon[value]' => $discount,
+                            'coupon[issuer]' => "merchant_api"
+                        ));
+                    }
+            }
+         
 
             $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token, $REFERENCE);
 
