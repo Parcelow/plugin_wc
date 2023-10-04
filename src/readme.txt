@@ -20,7 +20,7 @@ Payment in 12 installments.
 
 To learn more about Parcelow visit our website: www.parcelow.com/en/home
 
-To use our payment method, just enroll here: https://vform.parcelow.com/index.html?indicacao=pluginWP
+To use our payment method, just enroll here: https://merchant.parcelow.com/
 
 After your registration is approved you will be given access credentials to the API.
 
