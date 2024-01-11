@@ -1580,10 +1580,11 @@ function wcppa_woocommerce_gateway_parcelow_init()
             // we need it to get any order detailes
             $order = wc_get_order($order_id);
             //$order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
-
-            $REFERENCE = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
+           
 
             $moeda = get_option('woocommerce_currency');
+
+            $REFERENCE = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id . "_" .$moeda;
             
             if($moeda == 'BRL'){
                     /* Array with parameters for API interaction */
@@ -1612,16 +1613,35 @@ function wcppa_woocommerce_gateway_parcelow_init()
                         WC()->session->set('WCPPA_NAME', sanitize_text_field($_POST['billing_first_name']) . ' ' . sanitize_text_field($_POST['billing_last_name']));
                     }
         
+                    $tot_sim_tax = 0;
                     $total_woo = 0;
                     $total_woo = $order->get_total();
                     $total_woo = str_replace(",", "", $total_woo);
                     $total_woo = str_replace(".", "", $total_woo);
+                    
+                    $paysimvalorderreal = array(
+                        'method' => 'GET',
+                        'headers' => array(
+                            'Authorization' => "Bearer ". $token,
+                            'Content-Type' => "application/x-www-form-urlencoded",
+                                'Accept' => "application/json"
+                            ),
+                        'timeout' => 90
+                    );
+                    
+                    $urlsiml = $this->host . "/api/simulate?amount=" . $order->get_total() . "&currency=BRL";
+                    $res_simul = wp_remote_get($urlsiml , $paysimvalorderreal);
+                    $cal_com_tax = json_decode(wp_remote_retrieve_body($res_simul), true);
+                 
+                    $tot_sim_tax = $cal_com_tax["data"]["creditcard"]["installments"][0]["monthly"];
+                    $tot_sim_tax = str_replace(",", "", $tot_sim_tax);
+                    $tot_sim_tax = str_replace(".", "", $tot_sim_tax);
         
                     $reference_ = $this->wcppa_geraCODRandNumber(6) . "_" . $order_id;
                     $args = array_merge($args, array(
                             'items[0][description]' => "VENDA ONLINE",
                             'items[0][quantity]' =>1,
-                            'items[0][amount]' =>  $total_woo
+                            'items[0][amount]' =>  $tot_sim_tax
                     ));
             }else{
                  /* Array with parameters for API interaction */
