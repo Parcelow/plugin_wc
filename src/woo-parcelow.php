@@ -374,9 +374,8 @@ function wcppa_carrega_scripts()
 
     wp_enqueue_script('bootstrap.bundle', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/bootstrap.bundle.min.js');
 
-
-
     wp_enqueue_script('scriptajax', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/ajax.js', ['jquery'], '1.0', true);
+
     wp_enqueue_script('jquery.mask', WCPPA_PARCELOW_GATEWAY_PLUGIN_URL  . 'assets/js/jquery.mask.min.js');
 
     wp_localize_script(
@@ -1180,21 +1179,13 @@ function wcppa_carrega_ajax()
                                     <a class="btn btn-warning" type="submit" id="btn_finaliza_com_cartao" style="padding:15px;">FINALIZAR PAGAMENTO</a>
                                 </div>
                             </div>
-
-
-
                         </div>
                     </form>
-
-
                 </div>
 
                 <br style="clear:both;">
-
                 <div id="boxMsgFinalizaCard"></div>
-
                 <br style="clear:both;">
-
             </div>
         </div>
 
@@ -1220,10 +1211,6 @@ function wcppa_carrega_ajax()
         echo wp_send_json($retorno);
     }
 }
-
-
-
-
 
 //wc-checkout 	
 function wcppa_woocommerce_gateway_parcelow_init()
@@ -1342,13 +1329,10 @@ function wcppa_woocommerce_gateway_parcelow_init()
             $this->writehtml();
         }
 
-
-
         public function writehtml()
         {
             //echo "<div id='boxHTMLModalParcelow'></div>";
         }
-
 
         public function wcppa_secured_encrypt($plaintext)
         {
@@ -1359,7 +1343,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
         function wcppa_installmentPaymentsSimulator($idOrder)
         {
             $order = wc_get_order();
-
             print_r('testado');
         }
 
@@ -1470,7 +1453,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
                     )
                 )
 
-
             );
         }
 
@@ -1484,8 +1466,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
              */
         }
 
-
-
         /*
 		 * Custom CSS and JS, in most cases required only when you decided to go with a custom credit card form
 		 */
@@ -1498,7 +1478,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
 		 */
         public function validate_fields()
         {
-
             return true;
         }
 
@@ -1579,8 +1558,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
 
             // we need it to get any order detailes
             $order = wc_get_order($order_id);
-            //$order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );
-           
+            //$order->update_status('aberto', sprintf( __( 'Pedido criado na parcelow', 'woocommerce-gateway-parcelow' ) ) );           
 
             $moeda = get_option('woocommerce_currency');
 
@@ -1698,14 +1676,12 @@ function wcppa_woocommerce_gateway_parcelow_init()
                     $taxesAmount = (0 + $order->get_total_tax()) * 100;
                     $taxesAmount = $this->calcMultiCurrencyBRLtoUSD($taxesAmount); //BRL change to USD
         
-                    if ($taxesAmount > 0) {
-        
+                    if ($taxesAmount > 0) {        
                         $args = array_merge($args, array(
                             'items[' . $i . '][description]' => $item_name,
                             'items[' . $i . '][quantity]' => $quantity,
                             'items[' . $i . '][amount]' =>  $this->calcMultiCurrencyBRLtoUSD(($order->get_total_tax() * 100))
-                        )); //BRL change to USD
-        
+                        )); //BRL change to USD        
                     }
         
                     $couponCode = "COUPON";
@@ -1725,7 +1701,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
             $existOrder = $this->wcppa_checkExistOrderNaParcelow($order_id, $token, $REFERENCE);
 
             if ($existOrder == false) {
-
                 /*  Your API interaction could be built with wp_remote_post() */
                 $payload = array(
                     'method' => 'POST',
@@ -1746,7 +1721,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
                     $urlapi .= '/brl';
                 }
 
-
                 $response = wp_remote_post($urlapi, $payload);
            
                 if (is_wp_error($response)) {
@@ -1764,9 +1738,7 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 //var_dump($body);
 
                 if ($body['success'] == true) {
-
                     $order->update_status('wc-pending', __('Awaiting  payment', 'woocommerce'));
-
                     $data = $body['data'];
                     $total = (string) number_format($body['total'], 2, ",", ".");
                     $total = str_replace(",", "", $total);
@@ -1806,7 +1778,6 @@ function wcppa_woocommerce_gateway_parcelow_init()
                 ];
             }
         }
-
 
         public function wcppa_getInfoOrder($order_id, $token)
         {
@@ -2207,8 +2178,6 @@ function cfwc_create_custom_field()
 }
 add_action('woocommerce_product_options_general_product_data', 'cfwc_create_custom_field');
 
-
-
 function cfwc_save_custom_field($post_id)
 {
     $product = wc_get_product($post_id);
@@ -2225,8 +2194,6 @@ function cfwc_save_custom_field($post_id)
     $product->save();
 }
 add_action('woocommerce_process_product_meta', 'cfwc_save_custom_field');
-
-
 
 /** Add Valor Aproximado ao lado de cada produto */
 add_filter('woocommerce_get_price_html', 'add_approximately_price', 10, 2);
@@ -2399,7 +2366,6 @@ function add_approximately_price($price_html, $product)
                     $access_token = "Bearer " . $_COOKIE['WCPPA_OPT_ACC_TOK'];
                 }
 
-
                 $lang = get_locale();
 
                 $leg = "";
@@ -2481,9 +2447,6 @@ function add_approximately_price($price_html, $product)
                         $dolar = $_COOKIE['WCPPA_OPT_DOLAR'];
                     }
                     */
-
-
-
 
                     //echo $dolar;
                     //echo "DOLAR = " . $_COOKIE['WCPPA_OPT_DOLAR'];
@@ -2850,7 +2813,6 @@ function filter_woocommerce_product_cross_sells_products_heading()
             $price_html = '<img src="' . WCPPA_PARCELOW_GATEWAY_PLUGIN_URL . 'assets/imgs/compra_segura.png" style="width:246px; display: block;margin-left: auto; margin-right: auto;"><br>';
         }
     }
-
     echo  $price_html;
 }
 
