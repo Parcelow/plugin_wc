@@ -926,7 +926,7 @@ $(document).ready(function ($) {
                             order_key;
 
                         $(target).html("");
-                        var link = '<div id="boxQRCODE" style="margin:0 auto;width:399px;height:399px;"><img src="' +
+                        var link = '<div id="boxQRCODE" class="col-8 mx-auto text-center"><img src="' +
                             qrc.link +
                             '" title="QR CODE PARCELOW" /></div><br><br>';
                         link +=
